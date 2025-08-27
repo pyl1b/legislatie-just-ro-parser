@@ -27,6 +27,18 @@ SAMPLE_HTML = """
 </span>
 """
 
+# Full HTML document including metadata for testing document info extraction.
+SAMPLE_HTML_WITH_META = f"""
+<html>
+  <head>
+    <title>Sample Document</title>
+    <meta name="description" content="Sample description">
+    <meta name="keywords" content="kw1, kw2">
+  </head>
+  <body>{SAMPLE_HTML}</body>
+</html>
+"""
+
 
 SAMPLE_HTML_BODY_LABEL = """
 <span class="S_ART" id="id_art2">
@@ -77,3 +89,11 @@ def test_labels_from_body_text() -> None:
     sub_b = paragraph["subparagraphs"][1]
     assert sub_b["label"] == "(1)"
     assert sub_b["text"] == "Numbered item."
+
+
+def test_metadata_extraction() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_WITH_META, "789")
+    info = doc["document"]
+    assert info["title"] == "Sample Document"
+    assert info["description"] == "Sample description"
+    assert info["keywords"] == "kw1, kw2"
