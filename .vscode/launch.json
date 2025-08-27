@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: leropa convert",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "convert",
+        "${input:verId}"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "windows": {
+        "python": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "verId",
+      "type": "promptString",
+      "description": "Document version ID (ver_id) to convert"
+    }
+  ]
+}
+
+

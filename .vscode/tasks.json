@@ -1,0 +1,37 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "leropa: convert",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "windows": {
+        "command": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "-m",
+        "leropa",
+        "convert",
+        "${input:verId}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "verId",
+      "type": "promptString",
+      "description": "Document version ID (ver_id) to convert"
+    }
+  ]
+}
+
+
