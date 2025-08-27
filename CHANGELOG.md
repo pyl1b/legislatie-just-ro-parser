@@ -4,3 +4,4 @@
 - Support writing `convert` output to files.
 - Add YAML and XLSX output formats for `convert` command.
 - Parse sub-paragraphs labelled with letters within paragraphs.
+- Capture document metadata (title, description, keywords) in the parser.

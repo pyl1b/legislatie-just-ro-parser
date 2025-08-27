@@ -37,12 +37,18 @@ class DocumentInfo:
     Attributes:
         source: Source URL for the document.
         ver_id: Identifier for the document version.
+        title: Document title from the HTML metadata.
+        description: Document description from the HTML metadata.
+        keywords: Document keywords from the HTML metadata.
         prev_ver: Identifier for previous version if available.
         next_ver: Identifier for next version if available.
     """
 
     source: str
     ver_id: str
+    title: str | None = None
+    description: str | None = None
+    keywords: str | None = None
     prev_ver: str | None = None
     next_ver: str | None = None
 
@@ -159,6 +165,23 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
 
     soup = BeautifulSoup(html, "html.parser")
 
+    # Extract document metadata from meta tags.
+    meta_title = soup.find("meta", attrs={"name": "title"})
+    description_tag = soup.find("meta", attrs={"name": "description"})
+    keywords_tag = soup.find("meta", attrs={"name": "keywords"})
+
+    # Fall back to the HTML title when meta title is missing.
+    title = (
+        meta_title.get("content")
+        if meta_title and meta_title.get("content")
+        else soup.title.get_text(strip=True)
+        if soup.title
+        else None
+    )
+
+    description = description_tag.get("content") if description_tag else None
+    keywords = keywords_tag.get("content") if keywords_tag else None
+
     articles: List[Article] = []
 
     for art_tag in soup.find_all("span", class_="S_ART"):
@@ -184,7 +207,15 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
         )
 
     source = f"https://legislatie.just.ro/Public/DetaliiDocument/{ver_id}"
-    document = DocumentInfo(source=source, ver_id=ver_id)
+
+    # Store metadata in the document info.
+    document = DocumentInfo(
+        source=source,
+        ver_id=ver_id,
+        title=title,
+        description=description,
+        keywords=keywords,
+    )
 
     return {
         "document": asdict(document),
