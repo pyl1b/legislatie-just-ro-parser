@@ -19,6 +19,8 @@ dependencies = [
   "dotenv>=0.9.9",
   "requests>=2.32.3,<3",
   "beautifulsoup4>=4.12,<5",
+  "pyyaml>=6.0,<7",
+  "openpyxl>=3.1,<4",
 ]
 
 [project.scripts]
