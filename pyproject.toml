@@ -62,6 +62,7 @@ write_to = "leropa/__version__.py"
 [tool.ruff]
 line-length = 79
 target-version = "py312"
+extend-exclude = ["venv", ".venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "ANN"]  # E=pycodestyle, F=pyflakes, I=imports

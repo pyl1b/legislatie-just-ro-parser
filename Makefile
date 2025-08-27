@@ -15,12 +15,12 @@ test:
 
 
 lint:
-	ruff check .
+	ruff check --force-exclude .
 
 
 format:
-	ruff format .
+	ruff format --force-exclude .
 
 
 delint: format
-	ruff check --fix .
+	ruff check --fix --force-exclude .
