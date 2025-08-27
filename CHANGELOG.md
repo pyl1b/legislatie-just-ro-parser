@@ -17,3 +17,5 @@
 - Represent article lists with article identifiers instead of full articles.
 - Include sub-paragraph text in the article ``full_text`` field.
 - Generate default hierarchy when chapters or sections lack parent books.
+- Export each data type to its own PascalCase sheet in XLSX output with
+  parent-child identifiers and Excel tables.
