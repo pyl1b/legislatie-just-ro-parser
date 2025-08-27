@@ -1,0 +1,10 @@
+{
+    "cSpell.words": [
+        "leropa"
+    ],
+    "python.formatting.provider": "none",
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "[python]": { "editor.formatOnSave": true },
+    "ruff.lint.enable": true,
+    "ruff.format.args": []
+}
