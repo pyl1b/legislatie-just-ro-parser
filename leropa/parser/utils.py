@@ -92,6 +92,205 @@ def _note_from_tag(tag: Any) -> Note:  # noqa: ANN401
     return Note(note_id=note_id, text=text, **details)
 
 
+def _extract_article_note(tag: Any) -> Note:  # noqa: ANN401
+    """Return a note extracted from an article-level tag.
+
+    Args:
+        tag: ``span`` element containing the note.
+
+    Returns:
+        The parsed ``Note`` instance.
+    """
+
+    # Remove the title of the note so that it does not end up in the text.
+    title_tag = tag.find("span", class_="S_NTA_TTL")
+    if title_tag:
+        title_tag.extract()
+
+    return _note_from_tag(tag)
+
+
+def _subparagraph_from_tag(tag: Any) -> SubParagraph:  # noqa: ANN401
+    """Create a subparagraph instance from a list item tag.
+
+    Args:
+        tag: ``span`` element representing the list item.
+
+    Returns:
+        Parsed ``SubParagraph`` instance.
+    """
+
+    item_classes = tag.get("class", [])
+
+    # Locate label and body depending on the list item type.
+    if "S_LIN" in item_classes:
+        label_tag = tag.find("span", class_="S_LIN_TTL")
+        bdy = tag.find("span", class_="S_LIN_BDY")
+    else:
+        label_tag = tag.find("span", class_="S_LIT_TTL")
+        bdy = tag.find("span", class_="S_LIT_BDY")
+
+    # Preserve spaces between inline elements when extracting text.
+    text = (
+        _normalize_whitespace(bdy.get_text(" ", strip=True))
+        if bdy
+        else _normalize_whitespace(tag.get_text(" ", strip=True))
+    )
+
+    label = label_tag.get_text(strip=True) if label_tag else ""
+    sub_id = tag.get("id", "")
+    return SubParagraph(sub_id=sub_id, label=label, text=text)
+
+
+def _parse_paragraph_tag(tag: Any) -> tuple[Paragraph, list[Any]]:  # noqa: ANN401
+    """Parse a numbered or plain paragraph tag.
+
+    Args:
+        tag: ``span`` element representing the paragraph.
+
+    Returns:
+        Tuple containing the resulting ``Paragraph`` and any extracted list
+        item tags that should become subparagraphs.
+    """
+
+    notes_in_par: NoteList = []
+
+    # Collect list items so that they do not end up in the paragraph body.
+    list_items = tag.find_all("span", class_=["S_LIN", "S_LIT"])
+    for item in list_items:
+        item.extract()
+
+    classes = tag.get("class", [])
+
+    if "S_ALN" in classes:
+        bdy = tag.find("span", class_="S_ALN_BDY")
+        if bdy:
+            for note in bdy.find_all("span", class_="S_PAR"):
+                notes_in_par.append(_note_from_tag(note))
+                note.extract()
+
+        # Preserve spaces between inline elements when extracting text.
+        text = (
+            _normalize_whitespace(bdy.get_text(" ", strip=True))
+            if bdy
+            else _normalize_whitespace(tag.get_text(" ", strip=True))
+        )
+
+        label_tag = tag.find("span", class_="S_ALN_TTL")
+        label = label_tag.get_text(strip=True) if label_tag else None
+    else:
+        for note in tag.find_all("span", class_="S_PAR"):
+            notes_in_par.append(_note_from_tag(note))
+            note.extract()
+
+        # Preserve spaces between inline elements when extracting text.
+        text = _normalize_whitespace(tag.get_text(" ", strip=True))
+        label = None
+
+    par_id = tag.get("id", "")
+    paragraph = Paragraph(
+        par_id=par_id, text=text, label=label, notes=notes_in_par
+    )
+    return paragraph, list_items
+
+
+def _parse_lettered_span(
+    tag: Any,  # noqa: ANN401
+    current_par: Paragraph | None,
+    paragraphs: ParagraphList,
+) -> Paragraph:
+    """Interpret a lettered span as a paragraph or subparagraph.
+
+    Args:
+        tag: ``span`` element with class ``S_LIT``.
+        current_par: The paragraph currently being constructed.
+        paragraphs: List of paragraphs belonging to the article.
+
+    Returns:
+        The paragraph that should be considered current after processing the
+        tag. This may be the existing paragraph or a new one.
+    """
+
+    label_tag = tag.find("span", class_="S_LIT_TTL")
+    bdy = tag.find("span", class_="S_LIT_BDY")
+
+    notes_in_par: NoteList = []
+    if bdy:
+        for note in bdy.find_all("span", class_="S_PAR"):
+            notes_in_par.append(_note_from_tag(note))
+            note.extract()
+
+    # Preserve spaces between inline elements when extracting text.
+    text = (
+        _normalize_whitespace(bdy.get_text(" ", strip=True))
+        if bdy
+        else _normalize_whitespace(tag.get_text(" ", strip=True))
+    )
+
+    label = label_tag.get_text(strip=True) if label_tag else ""
+    if not label:
+        # Extract label from the body when missing from ``S_LIT_TTL``.
+        match = re.match(r"^(\([0-9]+\)|[a-z]\))", text)
+        if match:
+            label = match.group(1)
+            text = text[match.end() :].lstrip()
+
+    # Determine whether this tag starts a new paragraph or a subparagraph.
+    if re.match(r"^\([0-9]+\)$", label) and (
+        current_par is None or current_par.label is not None
+    ):
+        par_id = tag.get("id", "")
+        new_par = Paragraph(
+            par_id=par_id,
+            text=text,
+            label=label,
+            notes=notes_in_par,
+        )
+        paragraphs.append(new_par)
+        return new_par
+
+    if current_par is not None:
+        sub_id = tag.get("id", "")
+        current_par.subparagraphs.append(
+            SubParagraph(sub_id=sub_id, label=label, text=text)
+        )
+        return current_par
+
+    # Treat stray ``S_LIT`` elements as paragraphs without labels.
+    par_id = tag.get("id", "")
+    new_par = Paragraph(
+        par_id=par_id, text=text, label=None, notes=notes_in_par
+    )
+    paragraphs.append(new_par)
+    return new_par
+
+
+def _parse_aln_body(tag: Any) -> Paragraph:  # noqa: ANN401
+    """Create a paragraph from a standalone ``S_ALN_BDY`` tag.
+
+    Args:
+        tag: ``span`` element with class ``S_ALN_BDY``.
+
+    Returns:
+        Parsed ``Paragraph`` instance with notes removed.
+    """
+
+    # Remove any notes embedded directly in the body.
+    for note in tag.find_all("span", class_="S_PAR"):
+        note.extract()
+
+    par_id = tag.get("id", "")
+
+    # Preserve spaces between inline elements when extracting text.
+    text = _normalize_whitespace(tag.get_text(" ", strip=True))
+    match = re.match(r"^(\([0-9]+\))", text)
+    label = match.group(1) if match else None
+    if match:
+        text = text[match.end() :].lstrip()
+
+    return Paragraph(par_id=par_id, text=text, label=label)
+
+
 def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: ANN401
     """Extract paragraph and note information from an article body tag."""
 
@@ -103,158 +302,25 @@ def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: A
     for child in body_tag.find_all("span", recursive=False):
         classes = child.get("class", [])
 
-        # Handle article-level notes.
         if "S_NTA" in classes:
-            title_tag = child.find("span", class_="S_NTA_TTL")
-            if title_tag:
-                title_tag.extract()
-
-            notes.append(_note_from_tag(child))
-
+            notes.append(_extract_article_note(child))
             child.decompose()
             continue
 
         if "S_PAR" in classes or "S_ALN" in classes:
-            # For numbered paragraphs wrapped in S_ALN,
-            # extract body text and label.
-            notes_in_par: NoteList = []
-
-            # Collect list items (lettered or dashed) before extracting the
-            # paragraph text so that they don't end up in the paragraph body.
-            list_items = child.find_all("span", class_=["S_LIN", "S_LIT"])
-            for item in list_items:
-                item.extract()
-
-            if "S_ALN" in classes:
-                bdy = child.find("span", class_="S_ALN_BDY")
-                if bdy:
-                    # Extract notes embedded within the paragraph body.
-                    for note in bdy.find_all("span", class_="S_PAR"):
-                        notes_in_par.append(_note_from_tag(note))
-                        note.extract()
-
-                # Preserve spaces between inline elements when extracting text.
-                text = (
-                    _normalize_whitespace(bdy.get_text(" ", strip=True))
-                    if bdy
-                    else _normalize_whitespace(child.get_text(" ", strip=True))
-                )
-
-                label_tag = child.find("span", class_="S_ALN_TTL")
-                label = label_tag.get_text(strip=True) if label_tag else None
-            else:
-                # Extract notes embedded within plain paragraph tags.
-                for note in child.find_all("span", class_="S_PAR"):
-                    notes_in_par.append(_note_from_tag(note))
-                    note.extract()
-
-                # Preserve spaces between inline elements when extracting text.
-                text = _normalize_whitespace(child.get_text(" ", strip=True))
-                label = None
-
-            par_id = child.get("id", "")
-            current_par = Paragraph(
-                par_id=par_id,
-                text=text,
-                label=label,
-                notes=notes_in_par,
-            )
+            current_par, list_items = _parse_paragraph_tag(child)
             paragraphs.append(current_par)
 
-            # Convert each extracted list item into a subparagraph of the
-            # current paragraph.
             for item in list_items:
-                item_classes = item.get("class", [])
-                if "S_LIN" in item_classes:
-                    label_tag = item.find("span", class_="S_LIN_TTL")
-                    bdy = item.find("span", class_="S_LIN_BDY")
-                else:
-                    label_tag = item.find("span", class_="S_LIT_TTL")
-                    bdy = item.find("span", class_="S_LIT_BDY")
-
-                # Preserve spaces between inline elements when extracting text.
-                sub_text = (
-                    _normalize_whitespace(bdy.get_text(" ", strip=True))
-                    if bdy
-                    else _normalize_whitespace(item.get_text(" ", strip=True))
-                )
-
-                sub_label = label_tag.get_text(strip=True) if label_tag else ""
-                sub_id = item.get("id", "")
-                current_par.subparagraphs.append(
-                    SubParagraph(sub_id=sub_id, label=sub_label, text=sub_text)
-                )
-
+                current_par.subparagraphs.append(_subparagraph_from_tag(item))
             continue
 
         if "S_LIT" in classes:
-            label_tag = child.find("span", class_="S_LIT_TTL")
-            bdy = child.find("span", class_="S_LIT_BDY")
-
-            notes_in_par = []
-            if bdy:
-                # Remove notes from the body and capture them when present.
-                for note in bdy.find_all("span", class_="S_PAR"):
-                    notes_in_par.append(_note_from_tag(note))
-                    note.extract()
-
-            # Preserve spaces between inline elements when extracting text.
-            text = (
-                _normalize_whitespace(bdy.get_text(" ", strip=True))
-                if bdy
-                else _normalize_whitespace(child.get_text(" ", strip=True))
-            )
-
-            label = label_tag.get_text(strip=True) if label_tag else ""
-            if not label:
-                # Extract label from the body when missing from S_LIT_TTL.
-                match = re.match(r"^(\([0-9]+\)|[a-z]\))", text)
-                if match:
-                    label = match.group(1)
-                    text = text[match.end() :].lstrip()
-
-            # Determine whether this is a paragraph or subparagraph.
-            if re.match(r"^\([0-9]+\)$", label) and (
-                current_par is None or current_par.label is not None
-            ):
-                par_id = child.get("id", "")
-                current_par = Paragraph(
-                    par_id=par_id,
-                    text=text,
-                    label=label,
-                    notes=notes_in_par,
-                )
-                paragraphs.append(current_par)
-            elif current_par is not None:
-                sub_id = child.get("id", "")
-                current_par.subparagraphs.append(
-                    SubParagraph(sub_id=sub_id, label=label, text=text)
-                )
-            else:
-                # Treat stray S_LIT elements as paragraphs without labels.
-                par_id = child.get("id", "")
-                current_par = Paragraph(
-                    par_id=par_id,
-                    text=text,
-                    label=None,
-                    notes=notes_in_par,
-                )
-                paragraphs.append(current_par)
+            current_par = _parse_lettered_span(child, current_par, paragraphs)
             continue
 
         if "S_ALN_BDY" in classes:
-            # Some documents may have S_ALN_BDY directly under the body.
-            for note in child.find_all("span", class_="S_PAR"):
-                note.extract()
-            par_id = child.get("id", "")
-
-            # Preserve spaces between inline elements when extracting text.
-            text = _normalize_whitespace(child.get_text(" ", strip=True))
-            match = re.match(r"^(\([0-9]+\))", text)
-            label = match.group(1) if match else None
-            if match:
-                text = text[match.end() :].lstrip()
-            current_par = Paragraph(par_id=par_id, text=text, label=label)
+            current_par = _parse_aln_body(child)
             paragraphs.append(current_par)
 
     return paragraphs, notes
