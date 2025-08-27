@@ -15,7 +15,8 @@ SubParagraphList = List["SubParagraph"]
 ParagraphList = List["Paragraph"]
 NoteList = List["Note"]
 HistoryList = List["HistoryEntry"]
-ArticleList = List["Article"]
+ArticleList = List[str]
+ArticleDataList = List["Article"]
 ChapterList = List["Chapter"]
 TitleList = List["Title"]
 BookList = List["Book"]
@@ -149,7 +150,8 @@ class Subsection:
         subsection_id: Identifier for the subsection body in the source HTML.
         title: Subsection label such as "§1".
         description: Descriptive text for the subsection if present.
-        articles: Ordered list of articles contained in the subsection.
+        articles: Ordered list of article identifiers contained in the
+            subsection.
     """
 
     subsection_id: str
@@ -167,7 +169,8 @@ class Section:
         title: Section label such as "Secţiunea I".
         description: Descriptive text for the section if present.
         subsections: Ordered list of subsections within the section.
-        articles: Articles that appear directly under the section.
+        articles: Identifiers of articles that appear directly under the
+            section.
     """
 
     section_id: str
@@ -186,7 +189,7 @@ class Chapter:
         title: Chapter label such as "Capitolul I".
         description: Descriptive text for the chapter if present.
         sections: Ordered list of sections within the chapter.
-        articles: Ordered list of articles contained in the chapter.
+        articles: Ordered list of article identifiers contained in the chapter.
     """
 
     chapter_id: str
@@ -206,7 +209,7 @@ class Title:
         description: Descriptive text for the title if present.
         chapters: Ordered list of chapters within the title.
         sections: Ordered list of sections within the title.
-        articles: Articles that appear directly under the title.
+        articles: Identifiers of articles that appear directly under the title.
     """
 
     title_id: str
@@ -228,7 +231,7 @@ class Book:
         titles: Ordered list of titles within the book.
         chapters: Chapters directly contained in the book.
         sections: Sections directly contained in the book.
-        articles: Articles that appear directly under the book.
+        articles: Identifiers of articles that appear directly under the book.
     """
 
     book_id: str
@@ -764,7 +767,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
             )
 
     # Store all parsed articles for backward compatibility.
-    articles: ArticleList = []
+    parsed_articles: ArticleDataList = []
 
     # Temporary registries for hierarchical structures to avoid duplicates.
     books: dict[str, Book] = {}
@@ -786,19 +789,19 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
         section = _ensure_section(art_tag, sections, chapter, title_obj, book)
         subsection = _ensure_subsection(art_tag, subsections, section)
 
-        # Attach the article to the deepest container available.
+        # Attach the article id to the deepest container available.
         if subsection:
-            subsection.articles.append(article)
+            subsection.articles.append(article.article_id)
         elif section:
-            section.articles.append(article)
+            section.articles.append(article.article_id)
         elif chapter:
-            chapter.articles.append(article)
+            chapter.articles.append(article.article_id)
         elif title_obj:
-            title_obj.articles.append(article)
+            title_obj.articles.append(article.article_id)
         elif book:
-            book.articles.append(article)
+            book.articles.append(article.article_id)
 
-        articles.append(article)
+        parsed_articles.append(article)
 
     source = f"https://legislatie.just.ro/Public/DetaliiDocument/{ver_id}"
 
@@ -817,7 +820,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
 
     return {
         "document": asdict(document),
-        "articles": [asdict(a) for a in articles],
+        "articles": [asdict(a) for a in parsed_articles],
         "books": [asdict(b) for b in books.values()],
     }
 
