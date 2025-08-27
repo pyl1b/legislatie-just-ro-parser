@@ -84,6 +84,35 @@ SAMPLE_HTML_BODY_LABEL = """
 """
 
 
+SAMPLE_HTML_LIT_PARAGRAPHS = """
+<span class="S_ART" id="id_art_lit">
+    <span class="S_ART_TTL" id="id_art_lit_ttl">Articolul LIT</span>
+    <span class="S_ART_BDY" id="id_art_lit_bdy">
+        <span class="S_LIT" id="id_lit_par1">
+            <span class="S_LIT_BDY" id="id_lit_par1_bdy">
+                (1) Intro paragraph.
+            </span>
+        </span>
+        <span class="S_LIT" id="id_lit_sub1">
+            <span class="S_LIT_BDY" id="id_lit_sub1_bdy">
+                a) First item.
+            </span>
+        </span>
+        <span class="S_LIT" id="id_lit_sub2">
+            <span class="S_LIT_BDY" id="id_lit_sub2_bdy">
+                b) Second item.
+            </span>
+        </span>
+        <span class="S_LIT" id="id_lit_par2">
+            <span class="S_LIT_BDY" id="id_lit_par2_bdy">
+                (2) Second paragraph.
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
 SAMPLE_HTML_WITH_NOTES = """
 <span class="S_ART" id="id_art_notes">
     <span class="S_ART_TTL" id="id_art_notes_ttl">Articolul 3</span>
@@ -169,6 +198,22 @@ def test_labels_from_body_text() -> None:
     sub_b = paragraph["subparagraphs"][1]
     assert sub_b["label"] == "(1)"
     assert sub_b["text"] == "Numbered item."
+
+
+def test_s_lit_paragraphs() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_LIT_PARAGRAPHS, "101")
+    article = doc["articles"][0]
+    paragraphs = article["paragraphs"]
+    assert len(paragraphs) == 2
+    first_par = paragraphs[0]
+    assert first_par["label"] == "(1)"
+    assert first_par["text"] == "Intro paragraph."
+    assert len(first_par["subparagraphs"]) == 2
+    assert first_par["subparagraphs"][0]["label"] == "a)"
+    assert first_par["subparagraphs"][0]["text"] == "First item."
+    second_par = paragraphs[1]
+    assert second_par["label"] == "(2)"
+    assert second_par["text"] == "Second paragraph."
 
 
 def test_metadata_extraction() -> None:

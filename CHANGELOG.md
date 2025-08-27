@@ -8,3 +8,4 @@
 - Extract amendment notes for articles and paragraphs.
 - Parse consolidation history and expose previous versions.
 - Parse books, titles and chapters linking articles accordingly.
+- Handle numbered paragraphs marked with ``S_LIT`` tags.

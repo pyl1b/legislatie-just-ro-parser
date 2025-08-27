@@ -295,13 +295,24 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             paragraphs.append(current_par)
             continue
 
-        if "S_LIT" in classes and current_par is not None:
+        if "S_LIT" in classes:
             label_tag = child.find("span", class_="S_LIT_TTL")
             bdy = child.find("span", class_="S_LIT_BDY")
+
+            notes_in_par: NoteList = []
             if bdy:
-                # Remove notes from subparagraph bodies.
+                # Remove notes from the body and capture them when present.
                 for note in bdy.find_all("span", class_="S_PAR"):
+                    note_id = note.get("id", "")
+                    notes_in_par.append(
+                        Note(
+                            note_id=note_id,
+                            text=note.get_text(" ", strip=True),
+                        )
+                    )
+
                     note.extract()
+
             text = (
                 bdy.get_text(strip=True) if bdy else child.get_text(strip=True)
             )
@@ -314,10 +325,33 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
                     label = match.group(1)
                     text = text[match.end() :].lstrip()
 
-            sub_id = child.get("id", "")
-            current_par.subparagraphs.append(
-                SubParagraph(sub_id=sub_id, label=label, text=text)
-            )
+            # Determine whether this is a paragraph or subparagraph.
+            if re.match(r"^\([0-9]+\)$", label) and (
+                current_par is None or current_par.label is not None
+            ):
+                par_id = child.get("id", "")
+                current_par = Paragraph(
+                    par_id=par_id,
+                    text=text,
+                    label=label,
+                    notes=notes_in_par,
+                )
+                paragraphs.append(current_par)
+            elif current_par is not None:
+                sub_id = child.get("id", "")
+                current_par.subparagraphs.append(
+                    SubParagraph(sub_id=sub_id, label=label, text=text)
+                )
+            else:
+                # Treat stray S_LIT elements as paragraphs without labels.
+                par_id = child.get("id", "")
+                current_par = Paragraph(
+                    par_id=par_id,
+                    text=text,
+                    label=None,
+                    notes=notes_in_par,
+                )
+                paragraphs.append(current_par)
             continue
 
         if "S_ALN_BDY" in classes:
