@@ -1,9 +1,10 @@
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from leropa import parser
 
 
-def test_fetch_document_uses_cache(tmp_path) -> None:
+def test_fetch_document_uses_cache(tmp_path: Path) -> None:
     """Fetches document from network only once and caches the HTML."""
 
     html = "<html><head><title>t</title></head><body></body></html>"

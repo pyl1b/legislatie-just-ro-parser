@@ -115,5 +115,5 @@ def test_convert_writes_xlsx_with_nested_values(tmp_path: Path) -> None:
     doc_sheet = workbook["document"]
 
     # The versions list is stored as a JSON string in the second column.
-    versions_cell = doc_sheet.cell(row=2, column=2).value
+    versions_cell = str(doc_sheet.cell(row=2, column=2).value)
     assert json.loads(versions_cell) == sample["document"]["versions"]

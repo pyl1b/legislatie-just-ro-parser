@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from .history_entry import HistoryEntry
 from .types import HistoryList
 
 

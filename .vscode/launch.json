@@ -2,15 +2,33 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "convert to yaml",
+      "name": "convert [Codul Civil] to yaml",
       "type": "debugpy",
       "request": "launch",
       "module": "leropa",
       "args": [
         "convert",
-        "${input:verId}",
+        "282147",
         "--format", "yaml",
-        "--output", "${workspaceFolder}/playground/test.yaml"
+        "--output", "${workspaceFolder}/playground/test-282147.yaml"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "windows": {
+        "python": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+      }
+    },
+    {
+      "name": "convert [R 600] to yaml",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "convert",
+        "282771",
+        "--format", "yaml",
+        "--output", "${workspaceFolder}/playground/test-282771.yaml"
       ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",

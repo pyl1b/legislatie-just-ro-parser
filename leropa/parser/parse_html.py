@@ -8,7 +8,6 @@ from typing import Any
 from attrs import asdict
 from bs4 import BeautifulSoup
 
-from .article import Article
 from .book import Book
 from .chapter import Chapter
 from .document_info import DocumentInfo
