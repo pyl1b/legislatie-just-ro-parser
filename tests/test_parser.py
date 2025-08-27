@@ -40,6 +40,28 @@ SAMPLE_HTML_WITH_META = f"""
 """
 
 
+SAMPLE_HTML_STRUCTURE = """
+<span class="S_CRT_TTL" id="id_book1_ttl">Cartea I</span>
+<span class="S_CRT_DEN">Book description</span>
+<span class="S_CRT_BDY" id="id_book1_bdy">
+    <span class="S_TTL_TTL" id="id_title1_ttl">Titlul I</span>
+    <span class="S_TTL_DEN">Title description</span>
+    <span class="S_TTL_BDY" id="id_title1_bdy">
+        <span class="S_CAP_TTL" id="id_chap1_ttl">Capitolul I</span>
+        <span class="S_CAP_DEN">Chapter description</span>
+        <span class="S_CAP_BDY" id="id_chap1_bdy">
+            <span class="S_ART" id="id_art1">
+                <span class="S_ART_TTL" id="id_art1_ttl">Articolul 1</span>
+                <span class="S_ART_BDY" id="id_art1_bdy">
+                    <span class="S_PAR" id="id_par1">Paragraph.</span>
+                </span>
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
 SAMPLE_HTML_BODY_LABEL = """
 <span class="S_ART" id="id_art2">
     <span class="S_ART_TTL" id="id_art2_ttl">Articolul 2</span>
@@ -157,3 +179,16 @@ def test_version_history_extraction() -> None:
     assert info["history"][0]["date"] == "02.07.2010"
     assert info["prev_ver"] == "120341"
     assert info["history"][1]["ver_id"] == "113617"
+
+
+def test_hierarchical_parsing() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_STRUCTURE, "888")
+    books = doc["books"]
+    assert len(books) == 1
+    book = books[0]
+    assert book["book_id"] == "id_book1_bdy"
+    assert book["titles"][0]["title_id"] == "id_title1_bdy"
+    chapter = book["titles"][0]["chapters"][0]
+    assert chapter["chapter_id"] == "id_chap1_bdy"
+    assert chapter["articles"][0]["article_id"] == "id_art1"
+    assert doc["articles"][0]["article_id"] == "id_art1"
