@@ -262,10 +262,12 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
                         )
 
                         note.extract()
+
+                # Preserve spaces between inline elements when extracting text.
                 text = (
-                    bdy.get_text(strip=True)
+                    bdy.get_text(" ", strip=True)
                     if bdy
-                    else child.get_text(strip=True)
+                    else child.get_text(" ", strip=True)
                 )
 
                 label_tag = child.find("span", class_="S_ALN_TTL")
@@ -282,7 +284,9 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
                     )
 
                     note.extract()
-                text = child.get_text(strip=True)
+
+                # Preserve spaces between inline elements when extracting text.
+                text = child.get_text(" ", strip=True)
                 label = None
 
             par_id = child.get("id", "")
@@ -313,8 +317,11 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
 
                     note.extract()
 
+            # Preserve spaces between inline elements when extracting text.
             text = (
-                bdy.get_text(strip=True) if bdy else child.get_text(strip=True)
+                bdy.get_text(" ", strip=True)
+                if bdy
+                else child.get_text(" ", strip=True)
             )
 
             label = label_tag.get_text(strip=True) if label_tag else ""
@@ -359,7 +366,9 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             for note in child.find_all("span", class_="S_PAR"):
                 note.extract()
             par_id = child.get("id", "")
-            text = child.get_text(strip=True)
+
+            # Preserve spaces between inline elements when extracting text.
+            text = child.get_text(" ", strip=True)
             match = re.match(r"^(\([0-9]+\))", text)
             label = match.group(1) if match else None
             if match:
@@ -392,7 +401,9 @@ def _parse_article(art_tag: Tag) -> Article | None:
     paragraphs, notes = _get_paragraphs(body_tag)
 
     # Full text of the article without notes.
-    full_text = body_tag.get_text(strip=True)
+
+    # Preserve spaces between inline elements when extracting text.
+    full_text = body_tag.get_text(" ", strip=True)
 
     return Article(
         article_id=article_id,

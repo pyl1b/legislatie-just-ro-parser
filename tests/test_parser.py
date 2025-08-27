@@ -135,6 +135,21 @@ SAMPLE_HTML_WITH_NOTES = """
 """
 
 
+SAMPLE_HTML_WITH_LINK = (
+    '<span class="S_ART" id="id_art_link">'
+    '    <span class="S_ART_TTL" id="id_art_link_ttl">Articolul Link</span>'
+    '    <span class="S_ART_BDY" id="id_art_link_bdy">'
+    '        <span class="S_LIT" id="id_lit_link">'
+    '            <span class="S_LIT_BDY" id="id_lit_link_bdy">(1) '
+    "Este anulabilă căsătoria încheiată fără "
+    "încuviinţările sau autorizarea prevăzute la "
+    "<a href='#'>art. 272</a> alin. (2), (4) şi (5).</span>"
+    "        </span>"
+    "    </span>"
+    "</span>"
+)
+
+
 SAMPLE_HTML_WITH_HISTORY = """
 <html>
   <body>
@@ -237,6 +252,19 @@ def test_parse_notes() -> None:
 
     assert article["notes"][0]["text"] == "Article note."
     assert article["notes"][0]["note_id"] == "id_note_art"
+
+
+def test_preserves_space_around_links() -> None:
+    """Ensure spaces are preserved when parsing inline links."""
+
+    doc = parser.parse_html(SAMPLE_HTML_WITH_LINK, "314")
+    paragraph = doc["articles"][0]["paragraphs"][0]
+    expected = (
+        "Este anulabilă căsătoria încheiată fără încuviinţările "
+        "sau autorizarea prevăzute la art. 272 alin. (2), (4) şi (5)."
+    )
+    assert paragraph["label"] == "(1)"
+    assert paragraph["text"] == expected
 
 
 def test_version_history_extraction() -> None:
