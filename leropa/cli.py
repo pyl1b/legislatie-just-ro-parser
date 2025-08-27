@@ -65,9 +65,9 @@ def cli(debug: bool, trace: bool, log_file: Optional[str] = None) -> None:
 @click.option(
     "--output",
     "output_path",
-    type=click.Path(file_okay=True, dir_okay=False),
+    type=click.Path(file_okay=True, dir_okay=True),
     default=None,
-    help="Write output to FILE instead of the console.",
+    help="Write output to FILE or DIRECTORY instead of the console.",
 )
 @click.option(
     "--format",
@@ -87,7 +87,9 @@ def convert(
     Args:
         ver_id: Identifier for the document version to convert.
         cache_dir: Directory used to cache downloaded HTML files.
-        output_path: Optional file path for the converted data.
+        output_path: Optional file or directory path for the converted data.
+            If a directory is provided, the file name is automatically
+            generated from ``ver_id``.
         output_format: Format of the converted data.
     """
 
@@ -96,20 +98,34 @@ def convert(
     # Retrieve and parse the document structure.
     doc = parser.fetch_document(ver_id, cache_path)
 
+    # Determine the output file path if one was provided. When the user
+    # passes a directory, generate the file name using the document
+    # identifier and the chosen format extension.
+    final_path: Optional[Path] = None
+    if output_path:
+        final_path = Path(output_path)
+
+        # Mapping from format names to file extensions.
+        extensions = {"json": ".json", "yaml": ".yaml", "xlsx": ".xlsx"}
+
+        # If the provided path is a directory, build the file path inside it.
+        if final_path.is_dir():
+            final_path = final_path / f"{ver_id}{extensions[output_format]}"
+
     if output_format == "json":
         content = json.dumps(doc, ensure_ascii=False)
-        if output_path:
-            Path(output_path).write_text(content, encoding="utf-8")
+        if final_path:
+            final_path.write_text(content, encoding="utf-8")
         else:
             click.echo(content)
     elif output_format == "yaml":
         content = yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
-        if output_path:
-            Path(output_path).write_text(content, encoding="utf-8")
+        if final_path:
+            final_path.write_text(content, encoding="utf-8")
         else:
             click.echo(content)
     elif output_format == "xlsx":
-        if output_path is None:
+        if final_path is None:
             raise click.UsageError("Output file is required for xlsx format.")
 
         workbook = Workbook()
@@ -163,4 +179,4 @@ def convert(
 
                 sheet.append([cell_value])
 
-        workbook.save(output_path)
+        workbook.save(final_path)

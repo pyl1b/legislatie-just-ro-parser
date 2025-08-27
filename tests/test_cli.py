@@ -40,6 +40,22 @@ def test_convert_writes_json_to_file(tmp_path: Path) -> None:
     assert json.loads(out_file.read_text()) == sample
 
 
+def test_convert_writes_json_to_directory(tmp_path: Path) -> None:
+    """Ensure JSON output is written when a directory is provided."""
+
+    sample = {"document": {"ver_id": "123"}, "articles": []}
+
+    with patch("leropa.parser.fetch_document", return_value=sample):
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.cli, ["convert", "123", "--output", str(tmp_path)]
+        )
+
+    out_file = tmp_path / "123.json"
+    assert result.exit_code == 0
+    assert json.loads(out_file.read_text()) == sample
+
+
 def test_convert_outputs_yaml() -> None:
     """Ensure YAML output is sent to the console."""
 
@@ -82,6 +98,36 @@ def test_convert_writes_xlsx(tmp_path: Path) -> None:
     assert set(workbook.sheetnames) == {"document", "articles"}
     doc_sheet = workbook["document"]
     assert doc_sheet.cell(row=2, column=1).value == "123"
+
+
+def test_convert_writes_xlsx_to_directory(tmp_path: Path) -> None:
+    """Ensure XLSX output is written when a directory is provided."""
+
+    sample = {
+        "document": {"ver_id": "123"},
+        "articles": [
+            {"article_id": "a1", "full_text": "abc", "paragraphs": []}
+        ],
+    }
+
+    with patch("leropa.parser.fetch_document", return_value=sample):
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.cli,
+            [
+                "convert",
+                "123",
+                "--format",
+                "xlsx",
+                "--output",
+                str(tmp_path),
+            ],
+        )
+
+    out_file = tmp_path / "123.xlsx"
+    assert result.exit_code == 0
+    workbook = load_workbook(out_file)
+    assert set(workbook.sheetnames) == {"document", "articles"}
 
 
 def test_convert_writes_xlsx_with_nested_values(tmp_path: Path) -> None:
