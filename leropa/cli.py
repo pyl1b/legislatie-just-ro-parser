@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import Optional
 
 import click
-import yaml
+import yaml  # type: ignore
 from dotenv import load_dotenv
-from openpyxl import Workbook
+from openpyxl import Workbook  # type: ignore
 
 from leropa import parser
 
@@ -116,6 +116,7 @@ def convert(
 
         # Remove default sheet created by Workbook.
         default_sheet = workbook.active
+        assert default_sheet is not None
         workbook.remove(default_sheet)
 
         for key, value in doc.items():

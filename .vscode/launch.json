@@ -8,7 +8,9 @@
       "module": "leropa",
       "args": [
         "convert",
-        "${input:verId}"
+        "${input:verId}",
+        "--format", "yaml",
+        "--output", "${workspaceFolder}/playground/test.yaml"
       ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
