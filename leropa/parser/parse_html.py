@@ -25,6 +25,37 @@ from .utils import (
     _parse_article,
 )
 
+DEFAULT_BOOK_ID = "default_book"
+DEFAULT_CHAPTER_ID = "default_chapter"
+
+
+def _get_default_book(books: dict[str, Book]) -> Book:
+    """Return a placeholder book when the source lacks one."""
+
+    # Retrieve the existing placeholder book if present.
+    book = books.get(DEFAULT_BOOK_ID)
+    if book is None:
+        # Create a new empty book to attach orphaned structures.
+        book = Book(book_id=DEFAULT_BOOK_ID, title="")
+        books[DEFAULT_BOOK_ID] = book
+
+    return book
+
+
+def _get_default_chapter(chapters: dict[str, Chapter]) -> Chapter:
+    """Return a placeholder chapter when the source lacks one."""
+
+    # Retrieve the existing placeholder chapter if present.
+    chapter = chapters.get(DEFAULT_CHAPTER_ID)
+    if chapter is None:
+        # Create a new empty chapter to host orphaned sections.
+        chapter = Chapter(
+            chapter_id=DEFAULT_CHAPTER_ID, title="", description=None
+        )
+        chapters[DEFAULT_CHAPTER_ID] = chapter
+
+    return chapter
+
 
 def parse_html(html: str, ver_id: str) -> dict[str, Any]:
     """Parse HTML content into structured data.
@@ -109,8 +140,68 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
         # Ensure parent containers exist and retrieve them.
         book = _ensure_book(art_tag, books)
         title_obj = _ensure_title(art_tag, titles, book)
+
+        # When a title is present without a book, create a placeholder book.
+        if title_obj and book is None:
+            book = _get_default_book(books)
+
+            # Attach the title to the placeholder book if not already linked.
+            if all(t.title_id != title_obj.title_id for t in book.titles):
+                book.titles.append(title_obj)
+
         chapter = _ensure_chapter(art_tag, chapters, title_obj, book)
+
+        # When a chapter lacks a parent book or title,
+        # create a book placeholder.
+        if chapter and not (book or title_obj):
+            book = _get_default_book(books)
+
+            # Attach the chapter to the placeholder book if needed.
+            if all(c.chapter_id != chapter.chapter_id for c in book.chapters):
+                book.chapters.append(chapter)
+
         section = _ensure_section(art_tag, sections, chapter, title_obj, book)
+
+        # Create missing hierarchy for sections without a parent chapter.
+        if section and chapter is None:
+            # Ensure a placeholder book exists.
+            if book is None:
+                book = _get_default_book(books)
+
+            # Create or retrieve the placeholder chapter.
+            chapter = _get_default_chapter(chapters)
+
+            # Attach the chapter to the available parent container.
+            if title_obj:
+                # Link title to the placeholder book if not already done.
+                if all(t.title_id != title_obj.title_id for t in book.titles):
+                    book.titles.append(title_obj)
+
+                if all(
+                    c.chapter_id != chapter.chapter_id
+                    for c in title_obj.chapters
+                ):
+                    title_obj.chapters.append(chapter)
+
+                # Remove the section from the title if it was attached there.
+                if section in title_obj.sections:
+                    title_obj.sections.remove(section)
+            else:
+                if all(
+                    c.chapter_id != chapter.chapter_id for c in book.chapters
+                ):
+                    book.chapters.append(chapter)
+
+                # Remove the section from the book if it was attached there.
+                if section in book.sections:
+                    book.sections.remove(section)
+
+            # Finally, attach the section to the placeholder chapter.
+            if all(
+                s.section_id != section.section_id for s in chapter.sections
+            ):
+                chapter.sections.append(section)
+
         subsection = _ensure_subsection(art_tag, subsections, section)
 
         # Attach the article id to the deepest container available.

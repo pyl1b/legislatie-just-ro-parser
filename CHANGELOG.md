@@ -16,3 +16,4 @@
 - Ignore hidden ``S_LIT_SHORT`` placeholders to avoid stray ellipsis in text.
 - Represent article lists with article identifiers instead of full articles.
 - Include sub-paragraph text in the article ``full_text`` field.
+- Generate default hierarchy when chapters or sections lack parent books.

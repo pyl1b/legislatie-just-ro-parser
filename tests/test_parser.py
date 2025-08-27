@@ -261,6 +261,32 @@ SAMPLE_HTML_WITH_SECTIONS = """
 """
 
 
+SAMPLE_HTML_CHAPTER_NO_BOOK = """
+<span class="S_CAP_TTL" id="id_chapA_ttl">Capitolul I</span>
+<span class="S_CAP_BDY" id="id_chapA_bdy">
+    <span class="S_ART" id="id_artA">
+        <span class="S_ART_TTL" id="id_artA_ttl">Articolul 1</span>
+        <span class="S_ART_BDY" id="id_artA_bdy">
+            <span class="S_PAR" id="id_parA">Text.</span>
+        </span>
+    </span>
+</span>
+"""
+
+
+SAMPLE_HTML_SECTION_NO_BOOK = """
+<span class="S_SEC_TTL" id="id_sec_ttl">Secţiunea 1</span>
+<span class="S_SEC_BDY" id="id_sec_bdy">
+    <span class="S_ART" id="id_artB">
+        <span class="S_ART_TTL" id="id_artB_ttl">Articolul 1</span>
+        <span class="S_ART_BDY" id="id_artB_bdy">
+            <span class="S_PAR" id="id_parB">Text.</span>
+        </span>
+    </span>
+</span>
+"""
+
+
 def test_parse_html_extracts_articles() -> None:
     doc = parser.parse_html(SAMPLE_HTML, "123")
     assert doc["document"]["ver_id"] == "123"
@@ -435,3 +461,27 @@ def test_section_and_subsection_parsing() -> None:
     subsection = section["subsections"][0]
     assert subsection["subsection_id"] == "id_sub1_bdy"
     assert subsection["articles"][0] == "id_art1"
+
+
+def test_chapter_without_book() -> None:
+    """Create a default book when chapters lack explicit parents."""
+
+    doc = parser.parse_html(SAMPLE_HTML_CHAPTER_NO_BOOK, "666")
+    book = doc["books"][0]
+    assert book["book_id"] == "default_book"
+    chapter = book["chapters"][0]
+    assert chapter["chapter_id"] == "id_chapA_bdy"
+    assert chapter["articles"][0] == "id_artA"
+
+
+def test_section_without_hierarchy() -> None:
+    """Create default parents when sections appear at the top level."""
+
+    doc = parser.parse_html(SAMPLE_HTML_SECTION_NO_BOOK, "665")
+    book = doc["books"][0]
+    assert book["book_id"] == "default_book"
+    chapter = book["chapters"][0]
+    assert chapter["chapter_id"] == "default_chapter"
+    section = chapter["sections"][0]
+    assert section["section_id"] == "id_sec_bdy"
+    assert section["articles"][0] == "id_artB"
