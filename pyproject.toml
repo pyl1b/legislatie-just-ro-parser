@@ -41,7 +41,6 @@ dev = [
   "types-requests",
   "types-PyYAML",
   "types-openpyxl",
-  "types-attrs",
 ]
 
 
