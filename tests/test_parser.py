@@ -120,6 +120,28 @@ SAMPLE_HTML_WITH_HISTORY = """
 """
 
 
+SAMPLE_HTML_WITH_SECTIONS = """
+<span class="S_CRT_TTL" id="id_book1_ttl">Cartea I</span>
+<span class="S_CRT_BDY" id="id_book1_bdy">
+    <span class="S_CAP_TTL" id="id_chap1_ttl">Capitolul I</span>
+    <span class="S_CAP_BDY" id="id_chap1_bdy">
+        <span class="S_SEC_TTL" id="id_sec1_ttl">Secţiunea 1</span>
+        <span class="S_SEC_BDY" id="id_sec1_bdy">
+            <span class="S_SSEC_TTL" id="id_sub1_ttl">Paragraf 1</span>
+            <span class="S_SSEC_BDY" id="id_sub1_bdy">
+                <span class="S_ART" id="id_art1">
+                    <span class="S_ART_TTL" id="id_art1_ttl">Articolul 1</span>
+                    <span class="S_ART_BDY" id="id_art1_bdy">
+                        <span class="S_PAR" id="id_par1">Paragraph.</span>
+                    </span>
+                </span>
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
 def test_parse_html_extracts_articles() -> None:
     doc = parser.parse_html(SAMPLE_HTML, "123")
     assert doc["document"]["ver_id"] == "123"
@@ -192,3 +214,14 @@ def test_hierarchical_parsing() -> None:
     assert chapter["chapter_id"] == "id_chap1_bdy"
     assert chapter["articles"][0]["article_id"] == "id_art1"
     assert doc["articles"][0]["article_id"] == "id_art1"
+
+
+def test_section_and_subsection_parsing() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_WITH_SECTIONS, "777")
+    book = doc["books"][0]
+    chapter = book["chapters"][0]
+    section = chapter["sections"][0]
+    assert section["section_id"] == "id_sec1_bdy"
+    subsection = section["subsections"][0]
+    assert subsection["subsection_id"] == "id_sub1_bdy"
+    assert subsection["articles"][0]["article_id"] == "id_art1"
