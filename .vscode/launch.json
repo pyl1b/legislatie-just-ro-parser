@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug: leropa convert",
+      "name": "convert to yaml",
       "type": "debugpy",
       "request": "launch",
       "module": "leropa",
@@ -11,6 +11,42 @@
         "${input:verId}",
         "--format", "yaml",
         "--output", "${workspaceFolder}/playground/test.yaml"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "windows": {
+        "python": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+      }
+    },
+    {
+      "name": "convert to xlsx",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "convert",
+        "${input:verId}",
+        "--format", "xlsx",
+        "--output", "${workspaceFolder}/playground/test.xlsx"
+      ],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "justMyCode": true,
+      "windows": {
+        "python": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+      }
+    },
+    {
+      "name": "convert to json",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "convert",
+        "${input:verId}",
+        "--format", "json",
+        "--output", "${workspaceFolder}/playground/test.json"
       ],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}",
@@ -28,5 +64,3 @@
     }
   ]
 }
-
-
