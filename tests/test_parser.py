@@ -385,6 +385,10 @@ def test_line_items_become_subparagraphs() -> None:
     first = paragraph["subparagraphs"][0]
     assert first["label"] == "–"
     assert first["text"] == "First item;"
+    assert (
+        article["full_text"]
+        == "Termeni utilizați: – First item; – Second item;"
+    )
 
 
 def test_lettered_items_in_paragraph_become_subparagraphs() -> None:

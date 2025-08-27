@@ -326,6 +326,31 @@ def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: A
     return paragraphs, notes
 
 
+def _full_text_from_paragraphs(paragraphs: ParagraphList) -> str:
+    """Combine paragraph and subparagraph text into article text.
+
+    Args:
+        paragraphs: List of paragraphs parsed from the article.
+
+    Returns:
+        String containing the full textual content of the article.
+    """
+
+    parts: list[str] = []
+
+    for par in paragraphs:
+        if par.label:
+            parts.append(par.label)
+
+        parts.append(par.text)
+
+        for sub in par.subparagraphs:
+            label = f"{sub.label} " if sub.label else ""
+            parts.append(f"{label}{sub.text}".strip())
+
+    return _normalize_whitespace(" ".join(parts))
+
+
 def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
     """Create an article dataclass from the given tag.
 
@@ -355,10 +380,7 @@ def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
     # Extract paragraphs and associated notes.
     paragraphs, notes = _get_paragraphs(body_tag)
 
-    # Full text of the article without notes.
-
-    # Preserve spaces between inline elements when extracting text.
-    full_text = _normalize_whitespace(body_tag.get_text(" ", strip=True))
+    full_text = _full_text_from_paragraphs(paragraphs)
 
     return Article(
         article_id=article_id,
