@@ -13,7 +13,6 @@ from .chapter import Chapter
 from .document_info import DocumentInfo
 from .history_entry import HistoryEntry
 from .section import Section
-from .subsection import Subsection
 from .title import Title
 from .types import ArticleDataList, HistoryList
 from .utils import (
@@ -129,7 +128,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
     titles: dict[str, Title] = {}
     chapters: dict[str, Chapter] = {}
     sections: dict[str, Section] = {}
-    subsections: dict[str, Subsection] = {}
+    section_titles: dict[str, Section] = {}
 
     for art_tag in soup.find_all("span", class_="S_ART"):
         # Parse the article tag into a dataclass.
@@ -160,7 +159,9 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
             if all(c.chapter_id != chapter.chapter_id for c in book.chapters):
                 book.chapters.append(chapter)
 
-        section = _ensure_section(art_tag, sections, chapter, title_obj, book)
+        section = _ensure_section(
+            art_tag, sections, section_titles, chapter, title_obj, book
+        )
 
         # Create missing hierarchy for sections without a parent chapter.
         if section and chapter is None:
@@ -202,7 +203,9 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
             ):
                 chapter.sections.append(section)
 
-        subsection = _ensure_subsection(art_tag, subsections, section)
+        subsection = _ensure_subsection(
+            art_tag, sections, section_titles, section
+        )
 
         # Attach the article id to the deepest container available.
         if subsection:

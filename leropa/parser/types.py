@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from .paragraph import Paragraph  # noqa: F401
     from .section import Section  # noqa: F401
     from .sub_paragraph import SubParagraph  # noqa: F401
-    from .subsection import Subsection  # noqa: F401
     from .title import Title  # noqa: F401
 
 
@@ -27,4 +26,3 @@ ChapterList = list["Chapter"]
 TitleList = list["Title"]
 BookList = list["Book"]
 SectionList = list["Section"]
-SubsectionList = list["Subsection"]

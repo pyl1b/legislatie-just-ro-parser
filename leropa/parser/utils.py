@@ -12,7 +12,6 @@ from .note import Note
 from .paragraph import Paragraph
 from .section import Section
 from .sub_paragraph import SubParagraph
-from .subsection import Subsection
 from .title import Title
 from .types import NoteList, ParagraphList
 
@@ -503,6 +502,7 @@ def _ensure_chapter(
 def _ensure_section(
     art_tag: Any,  # noqa: ANN401
     sections: dict[str, Section],
+    section_titles: dict[str, Section],
     chapter: Chapter | None,
     title: Title | None,
     book: Book | None,
@@ -547,7 +547,24 @@ def _ensure_section(
         )
         sections[section_id] = section
 
-    # Attach the section to the parent container.
+        # Determine numeric level from the section title.
+        match = re.fullmatch(r"(\d+(?:\.\d+)*)\.?", sec_title.strip())
+        if match:
+            number = match.group(1)
+            section.level = number.count(".") + 1
+            section_titles[number] = section
+
+            # Find parent by removing the last component.
+            parent_key = ".".join(number.split(".")[:-1])
+            parent = section_titles.get(parent_key)
+            if parent and all(
+                s.section_id != section_id for s in parent.subsections
+            ):
+                parent.subsections.append(section)
+                return section
+
+    # Attach the section to the parent container only if no numeric
+    # parent was found.
     if chapter and all(s.section_id != section_id for s in chapter.sections):
         chapter.sections.append(section)
     elif (
@@ -568,9 +585,10 @@ def _ensure_section(
 
 def _ensure_subsection(
     art_tag: Any,  # noqa: ANN401
-    subsections: dict[str, Subsection],
+    sections: dict[str, Section],
+    section_titles: dict[str, Section],
     section: Section | None,
-) -> Subsection | None:
+) -> Section | None:
     """Retrieve or create a subsection for the given article tag."""
 
     if not section:
@@ -583,11 +601,10 @@ def _ensure_subsection(
 
     # Use the subsection body identifier to deduplicate subsections.
     sub_id = sub_body.get("id", "")
-    subsection = subsections.get(sub_id)
+    subsection = sections.get(sub_id)
 
     if subsection is None:
         # Determine the subsection label and description.
-        # Use preceding siblings to extract metadata.
         title_tag = sub_body.find_previous("span", class_="S_SSEC_TTL")
         desc_tag = sub_body.find_previous("span", class_="S_SSEC_DEN")
 
@@ -595,16 +612,30 @@ def _ensure_subsection(
         sub_title = title_tag.get_text(strip=True) if title_tag else ""
         description = desc_tag.get_text(strip=True) if desc_tag else None
 
-        # Create and store the new subsection instance.
-        subsection = Subsection(
-            subsection_id=sub_id,
+        # Create and store the new subsection instance as a Section.
+        subsection = Section(
+            section_id=sub_id,
             title=sub_title,
             description=description,
         )
-        subsections[sub_id] = subsection
+        sections[sub_id] = subsection
 
-    # Attach the subsection to the parent section.
-    if all(s.subsection_id != sub_id for s in section.subsections):
+        match = re.fullmatch(r"(\d+(?:\.\d+)*)\.?", sub_title.strip())
+        if match:
+            number = match.group(1)
+            subsection.level = number.count(".") + 1
+            section_titles[number] = subsection
+            parent_key = ".".join(number.split(".")[:-1])
+            parent = section_titles.get(parent_key)
+            if parent and all(
+                s.section_id != sub_id for s in parent.subsections
+            ):
+                parent.subsections.append(subsection)
+                return subsection
+
+    # Attach the subsection to the provided parent section if no numeric
+    # parent was found.
+    if all(s.section_id != sub_id for s in section.subsections):
         section.subsections.append(subsection)
 
     return subsection

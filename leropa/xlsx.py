@@ -54,7 +54,6 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
         "Title": [],
         "Chapter": [],
         "Section": [],
-        "Subsection": [],
         "Article": [],
         "Paragraph": [],
         "SubParagraph": [],
@@ -153,7 +152,7 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
 
         subsection_ids: List[str] = []
         for subsection in section.get("subsections", []):
-            subsection_ids.append(process_subsection(subsection, section_id))
+            subsection_ids.append(process_section(subsection, section_id))
 
         art_ids = section.get("articles", [])
         for art_id in art_ids:
@@ -164,21 +163,6 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
 
         sheets["Section"].append(section)
         return section_id
-
-    def process_subsection(subsection: Dict[str, Any], parent_id: str) -> str:
-        """Process a subsection structure and its descendants."""
-
-        subsection_id = _ensure_id(subsection, "subsection")
-        subsection["parent_id"] = parent_id
-
-        art_ids = subsection.get("articles", [])
-        for art_id in art_ids:
-            article_parent[art_id] = subsection_id
-
-        subsection["articles"] = ",".join(art_ids)
-
-        sheets["Subsection"].append(subsection)
-        return subsection_id
 
     def process_paragraph(paragraph: Dict[str, Any], parent_id: str) -> str:
         """Process a paragraph and its substructures."""
