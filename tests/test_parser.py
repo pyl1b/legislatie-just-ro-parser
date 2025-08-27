@@ -344,7 +344,7 @@ def test_hierarchical_parsing() -> None:
     assert book["titles"][0]["title_id"] == "id_title1_bdy"
     chapter = book["titles"][0]["chapters"][0]
     assert chapter["chapter_id"] == "id_chap1_bdy"
-    assert chapter["articles"][0]["article_id"] == "id_art1"
+    assert chapter["articles"][0] == "id_art1"
     assert doc["articles"][0]["article_id"] == "id_art1"
 
 
@@ -356,4 +356,4 @@ def test_section_and_subsection_parsing() -> None:
     assert section["section_id"] == "id_sec1_bdy"
     subsection = section["subsections"][0]
     assert subsection["subsection_id"] == "id_sub1_bdy"
-    assert subsection["articles"][0]["article_id"] == "id_art1"
+    assert subsection["articles"][0] == "id_art1"

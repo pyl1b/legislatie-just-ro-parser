@@ -13,3 +13,4 @@
 - Parse books, titles and chapters linking articles accordingly.
 - Handle numbered paragraphs marked with ``S_LIT`` tags.
 - Ignore hidden ``S_LIT_SHORT`` placeholders to avoid stray ellipsis in text.
+- Represent article lists with article identifiers instead of full articles.
