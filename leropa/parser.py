@@ -114,10 +114,31 @@ class Paragraph:
 
 @dataclass
 class Note:
-    """Amendment note attached to an article or paragraph."""
+    """Amendment note attached to an article or paragraph.
+
+    Attributes:
+        note_id: Identifier for the note element in the source HTML.
+        text: Full textual content of the note.
+        date: Date when the amendment took effect, if available.
+        subject: Portion of the document that was modified.
+        law_number: Number of the amending law.
+        law_date: Publication date of the amending law.
+        monitor_number: Number of the "Monitorul Oficial" issue.
+        monitor_date: Date of the "Monitorul Oficial" issue.
+        replaced: Text that was replaced.
+        replacement: Text that replaced the original.
+    """
 
     note_id: str
     text: str
+    date: str | None = None
+    subject: str | None = None
+    law_number: str | None = None
+    law_date: str | None = None
+    monitor_number: str | None = None
+    monitor_date: str | None = None
+    replaced: str | None = None
+    replacement: str | None = None
 
 
 @dataclass
@@ -219,6 +240,81 @@ class Book:
     articles: ArticleList = field(default_factory=list)
 
 
+def _normalize_whitespace(text: str) -> str:
+    """Collapse consecutive whitespace and tidy punctuation spacing."""
+
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    return re.sub(r"\s+([,.;:!?\)])", r"\1", cleaned)
+
+
+def _parse_note_details(text: str) -> dict[str, str | None]:
+    """Extract structured information from an amendment note.
+
+    Args:
+        text: Note text with normalized whitespace.
+
+    Returns:
+        Dictionary with parsed fields, defaulting to ``None`` when data is
+        missing.
+    """
+
+    date_match = re.search(r"la (\d{2}[.-]\d{2}[.-]\d{4})", text)
+    date = date_match.group(1) if date_match else None
+
+    subject = None
+    if date_match:
+        subject_match = re.search(r",\s*(.*?)\s+a fost", text)
+        if subject_match:
+            subject = subject_match.group(1)
+
+    law_match = re.search(
+        r"LEGEA nr\.\s*(\d+)\s+din\s+([0-9]{1,2} [a-zăâîșț]+ [0-9]{4})",
+        text,
+        re.IGNORECASE,
+    )
+    law_number = law_match.group(1) if law_match else None
+    law_date = law_match.group(2) if law_match else None
+
+    monitor_match = re.search(
+        (
+            r"MONITORUL OFICIAL nr\.\s*(\d+)\s+din\s+"
+            r"([0-9]{1,2} [a-zăâîșț]+ [0-9]{4})"
+        ),
+        text,
+        re.IGNORECASE,
+    )
+    monitor_number = monitor_match.group(1) if monitor_match else None
+    monitor_date = monitor_match.group(2) if monitor_match else None
+
+    replace_match = re.search(
+        r'înlocuirea sintagmei "([^"]+)" cu sintagma "([^"]+)"',
+        text,
+        re.IGNORECASE,
+    )
+    replaced = replace_match.group(1) if replace_match else None
+    replacement = replace_match.group(2) if replace_match else None
+
+    return {
+        "date": date,
+        "subject": subject,
+        "law_number": law_number,
+        "law_date": law_date,
+        "monitor_number": monitor_number,
+        "monitor_date": monitor_date,
+        "replaced": replaced,
+        "replacement": replacement,
+    }
+
+
+def _note_from_tag(tag: Tag) -> Note:
+    """Create a Note instance from the given HTML tag."""
+
+    note_id = tag.get("id", "")
+    text = _normalize_whitespace(tag.get_text(" ", strip=True))
+    details = _parse_note_details(text)
+    return Note(note_id=note_id, text=text, **details)
+
+
 def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
     """Extract paragraph and note information from an article body tag."""
 
@@ -236,10 +332,7 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             if title_tag:
                 title_tag.extract()
 
-            note_id = child.get("id", "")
-            notes.append(
-                Note(note_id=note_id, text=child.get_text(" ", strip=True))
-            )
+            notes.append(_note_from_tag(child))
 
             child.decompose()
             continue
@@ -253,21 +346,14 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
                 if bdy:
                     # Extract notes embedded within the paragraph body.
                     for note in bdy.find_all("span", class_="S_PAR"):
-                        note_id = note.get("id", "")
-                        notes_in_par.append(
-                            Note(
-                                note_id=note_id,
-                                text=note.get_text(" ", strip=True),
-                            )
-                        )
-
+                        notes_in_par.append(_note_from_tag(note))
                         note.extract()
 
                 # Preserve spaces between inline elements when extracting text.
                 text = (
-                    bdy.get_text(" ", strip=True)
+                    _normalize_whitespace(bdy.get_text(" ", strip=True))
                     if bdy
-                    else child.get_text(" ", strip=True)
+                    else _normalize_whitespace(child.get_text(" ", strip=True))
                 )
 
                 label_tag = child.find("span", class_="S_ALN_TTL")
@@ -275,18 +361,11 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             else:
                 # Extract notes embedded within plain paragraph tags.
                 for note in child.find_all("span", class_="S_PAR"):
-                    note_id = note.get("id", "")
-                    notes_in_par.append(
-                        Note(
-                            note_id=note_id,
-                            text=note.get_text(" ", strip=True),
-                        )
-                    )
-
+                    notes_in_par.append(_note_from_tag(note))
                     note.extract()
 
                 # Preserve spaces between inline elements when extracting text.
-                text = child.get_text(" ", strip=True)
+                text = _normalize_whitespace(child.get_text(" ", strip=True))
                 label = None
 
             par_id = child.get("id", "")
@@ -307,21 +386,14 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             if bdy:
                 # Remove notes from the body and capture them when present.
                 for note in bdy.find_all("span", class_="S_PAR"):
-                    note_id = note.get("id", "")
-                    notes_in_par.append(
-                        Note(
-                            note_id=note_id,
-                            text=note.get_text(" ", strip=True),
-                        )
-                    )
-
+                    notes_in_par.append(_note_from_tag(note))
                     note.extract()
 
             # Preserve spaces between inline elements when extracting text.
             text = (
-                bdy.get_text(" ", strip=True)
+                _normalize_whitespace(bdy.get_text(" ", strip=True))
                 if bdy
-                else child.get_text(" ", strip=True)
+                else _normalize_whitespace(child.get_text(" ", strip=True))
             )
 
             label = label_tag.get_text(strip=True) if label_tag else ""
@@ -368,7 +440,7 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             par_id = child.get("id", "")
 
             # Preserve spaces between inline elements when extracting text.
-            text = child.get_text(" ", strip=True)
+            text = _normalize_whitespace(child.get_text(" ", strip=True))
             match = re.match(r"^(\([0-9]+\))", text)
             label = match.group(1) if match else None
             if match:
@@ -409,7 +481,7 @@ def _parse_article(art_tag: Tag) -> Article | None:
     # Full text of the article without notes.
 
     # Preserve spaces between inline elements when extracting text.
-    full_text = body_tag.get_text(" ", strip=True)
+    full_text = _normalize_whitespace(body_tag.get_text(" ", strip=True))
 
     return Article(
         article_id=article_id,
