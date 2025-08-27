@@ -13,11 +13,12 @@ description = "Read legal documents from https://legislatie.just.ro/ and convert
 dynamic = ["version"]
 name = "leropa"
 readme = "README.md"
-requires-python = ">=3.12.10"
+requires-python = ">=3.11"
 dependencies = [
   "click>=8.1.8,<9",
   "dotenv>=0.9.9",
-  
+  "requests>=2.32.3,<3",
+
 ]
 
 [project.scripts]
