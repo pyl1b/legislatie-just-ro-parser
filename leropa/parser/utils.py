@@ -119,10 +119,10 @@ def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: A
             # extract body text and label.
             notes_in_par: NoteList = []
 
-            # Collect line items before extracting paragraph text so that
-            # they don't end up in the paragraph body.
-            line_items = child.find_all("span", class_="S_LIN")
-            for item in line_items:
+            # Collect list items (lettered or dashed) before extracting the
+            # paragraph text so that they don't end up in the paragraph body.
+            list_items = child.find_all("span", class_=["S_LIN", "S_LIT"])
+            for item in list_items:
                 item.extract()
 
             if "S_ALN" in classes:
@@ -161,11 +161,16 @@ def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: A
             )
             paragraphs.append(current_par)
 
-            # Convert each extracted line item into a subparagraph of the
+            # Convert each extracted list item into a subparagraph of the
             # current paragraph.
-            for item in line_items:
-                label_tag = item.find("span", class_="S_LIN_TTL")
-                bdy = item.find("span", class_="S_LIN_BDY")
+            for item in list_items:
+                item_classes = item.get("class", [])
+                if "S_LIN" in item_classes:
+                    label_tag = item.find("span", class_="S_LIN_TTL")
+                    bdy = item.find("span", class_="S_LIN_BDY")
+                else:
+                    label_tag = item.find("span", class_="S_LIT_TTL")
+                    bdy = item.find("span", class_="S_LIT_BDY")
 
                 # Preserve spaces between inline elements when extracting text.
                 sub_text = (

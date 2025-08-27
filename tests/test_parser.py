@@ -193,11 +193,37 @@ SAMPLE_HTML_WITH_LINE_ITEMS = """
                 <span class="S_LIN_TTL" id="id_lin2_ttl">– </span>
                 <span class="S_LIN_BDY" id="id_lin2_bdy">Second item;</span>
             </span>
+</span>
+</span>
+</span>
+"""
+
+
+SAMPLE_HTML_LIT_ITEMS_IN_PARAGRAPH = """
+<span class="S_ART" id="id_art_lit_par">
+    <span class="S_ART_TTL" id="id_art_lit_par_ttl">Articolul LitPar</span>
+    <span class="S_ART_BDY" id="id_art_lit_par_bdy">
+        <span class="S_ALN" id="id_par_lit">
+            <span class="S_ALN_TTL" id="id_par_lit_ttl">(1)</span>
+            <span class="S_ALN_BDY" id="id_par_lit_bdy">
+                Intro text:
+                <span class="S_LIT" id="id_lit_a">
+                    <span class="S_LIT_TTL" id="id_lit_a_ttl">a)</span>
+                    <span class="S_LIT_BDY" id="id_lit_a_bdy">
+                        First item;
+                    </span>
+                </span>
+                <span class="S_LIT" id="id_lit_b">
+                    <span class="S_LIT_TTL" id="id_lit_b_ttl">b)</span>
+                    <span class="S_LIT_BDY" id="id_lit_b_bdy">
+                        Second item;
+                    </span>
+                </span>
+            </span>
         </span>
     </span>
 </span>
 """
-
 
 SAMPLE_HTML_WITH_HISTORY = """
 <html>
@@ -358,6 +384,19 @@ def test_line_items_become_subparagraphs() -> None:
     assert len(paragraph["subparagraphs"]) == 2
     first = paragraph["subparagraphs"][0]
     assert first["label"] == "–"
+    assert first["text"] == "First item;"
+
+
+def test_lettered_items_in_paragraph_become_subparagraphs() -> None:
+    """Convert lettered items nested in paragraphs into subparagraphs."""
+
+    doc = parser.parse_html(SAMPLE_HTML_LIT_ITEMS_IN_PARAGRAPH, "717")
+    article = doc["articles"][0]
+    paragraph = article["paragraphs"][0]
+    assert paragraph["text"] == "Intro text:"
+    assert len(paragraph["subparagraphs"]) == 2
+    first = paragraph["subparagraphs"][0]
+    assert first["label"] == "a)"
     assert first["text"] == "First item;"
 
 
