@@ -8,6 +8,7 @@ from unittest.mock import patch
 import yaml  # type: ignore[import-untyped]
 from click.testing import CliRunner
 from openpyxl import load_workbook  # type: ignore[import-untyped]
+from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
 
 from leropa import cli
 
@@ -282,8 +283,30 @@ def test_convert_wraps_long_and_list_values(tmp_path: Path) -> None:
     summary_col = headers.index("summary") + 1
     assert doc_sheet.cell(row=2, column=versions_col).alignment.wrapText
     assert doc_sheet.cell(row=2, column=summary_col).alignment.wrapText
+    versions_width = doc_sheet.column_dimensions[
+        get_column_letter(versions_col)
+    ].width
+    summary_width = doc_sheet.column_dimensions[
+        get_column_letter(summary_col)
+    ].width
+    ver_id_col = headers.index("ver_id") + 1
+    ver_id_width = doc_sheet.column_dimensions[
+        get_column_letter(ver_id_col)
+    ].width
+    assert versions_width == 50
+    assert summary_width == 100
+    assert ver_id_width == 12
 
     article_sheet = workbook["Article"]
     headers = [cell.value for cell in article_sheet[1]]
     full_text_col = headers.index("full_text") + 1
     assert article_sheet.cell(row=2, column=full_text_col).alignment.wrapText
+    full_text_width = article_sheet.column_dimensions[
+        get_column_letter(full_text_col)
+    ].width
+    article_id_col = headers.index("article_id") + 1
+    article_id_width = article_sheet.column_dimensions[
+        get_column_letter(article_id_col)
+    ].width
+    assert full_text_width == 100
+    assert article_id_width == 12

@@ -293,8 +293,10 @@ def write_workbook(doc: Dict[str, Any], path: Path) -> None:
         headers = list(rows[0].keys())
         ws.append(headers)
 
-        # Track which column indexes require wrapped text.
+        # Track which column indexes require wrapped text and custom widths.
         wrap_columns: set[int] = set()
+        list_columns: set[int] = set()
+        long_text_columns: set[int] = set()
 
         for row in rows:
             values: List[Any] = []
@@ -303,14 +305,18 @@ def write_workbook(doc: Dict[str, Any], path: Path) -> None:
             for idx, header in enumerate(headers):
                 cell_value = row.get(header)
 
-                # Mark columns with lists or dictionaries for text wrapping.
+                # Mark columns with lists or dictionaries for text wrapping and
+                # custom width.
                 if isinstance(cell_value, (list, dict)):
                     wrap_columns.add(idx)
+                    list_columns.add(idx)
                     cell_value = json.dumps(cell_value, ensure_ascii=False)
 
-                # Mark columns containing long text for wrapping.
+                # Mark columns containing long text for wrapping and custom
+                # width.
                 if isinstance(cell_value, str) and len(cell_value) > 50:
                     wrap_columns.add(idx)
+                    long_text_columns.add(idx)
 
                 values.append(cell_value)
 
@@ -326,6 +332,16 @@ def write_workbook(doc: Dict[str, Any], path: Path) -> None:
             ):
                 for cell in col_cells:
                     cell.alignment = Alignment(wrapText=True)
+
+        # Set column widths based on the contained data type.
+        for idx in range(len(headers)):
+            col_letter = get_column_letter(idx + 1)
+            if idx in list_columns:
+                ws.column_dimensions[col_letter].width = 50
+            elif idx in long_text_columns:
+                ws.column_dimensions[col_letter].width = 100
+            else:
+                ws.column_dimensions[col_letter].width = 12
 
         # Determine table range covering the header and all rows.
         end_column = get_column_letter(len(headers))
