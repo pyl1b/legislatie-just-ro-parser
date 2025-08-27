@@ -150,6 +150,24 @@ SAMPLE_HTML_WITH_LINK = (
 )
 
 
+SAMPLE_HTML_WITH_SHORT = """
+<span class="S_ART" id="id_art_short">
+    <span class="S_ART_TTL" id="id_art_short_ttl">Articolul Short</span>
+    <span class="S_ART_BDY" id="id_art_short_bdy">
+        <span class="S_PAR" id="id_par_short">Intro paragraph.</span>
+        <span class="S_LIT" id="id_lit_short">
+            <span class="S_LIT_TTL" id="id_lit_short_ttl">a)</span>
+            <span class="S_LIT_SHORT" id="id_lit_short_short"
+                  style="display: none"> ... </span>
+            <span class="S_LIT_BDY" id="id_lit_short_bdy">
+                Subparagraph text.
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
 SAMPLE_HTML_WITH_HISTORY = """
 <html>
   <body>
@@ -265,6 +283,17 @@ def test_preserves_space_around_links() -> None:
     )
     assert paragraph["label"] == "(1)"
     assert paragraph["text"] == expected
+
+
+def test_removes_short_span() -> None:
+    """Ignore hidden short spans that only contain ellipsis."""
+
+    doc = parser.parse_html(SAMPLE_HTML_WITH_SHORT, "515")
+    article = doc["articles"][0]
+    assert article["full_text"] == "Intro paragraph. a) Subparagraph text."
+    paragraph = article["paragraphs"][0]
+    assert paragraph["subparagraphs"][0]["text"] == "Subparagraph text."
+    assert "..." not in article["full_text"]
 
 
 def test_version_history_extraction() -> None:

@@ -397,6 +397,12 @@ def _parse_article(art_tag: Tag) -> Article | None:
     if body_tag is None:
         return None
 
+    # Remove hidden short placeholders that render as ellipsis.
+    # These spans contain only three dots ("...") and are not meant to be
+    # part of the visible text content.
+    for short in body_tag.find_all("span", class_="S_LIT_SHORT"):
+        short.decompose()
+
     # Extract paragraphs and associated notes.
     paragraphs, notes = _get_paragraphs(body_tag)
 
