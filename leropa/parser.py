@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import List
@@ -16,12 +17,12 @@ ParagraphList = List["Paragraph"]
 
 @dataclass
 class SubParagraph:
-    """Lettered sub-paragraph within a paragraph.
+    """Lettered or numbered sub-paragraph within a paragraph.
 
     Attributes:
         sub_id: Identifier for the sub-paragraph element in the source HTML.
-        label: Enumerated label such as "a)".
-        text: Visible text content of the sub-paragraph.
+        label: Enumerated label such as "a)" or "(1)".
+        text: Visible text content of the sub-paragraph without the label.
     """
 
     sub_id: str
@@ -67,12 +68,14 @@ class Paragraph:
 
     Attributes:
         par_id: Identifier for the paragraph element in the source HTML.
-        text: Visible text content of the paragraph.
+        text: Visible text content of the paragraph without the label.
+        label: Enumerated label such as "(1)" if present.
         subparagraphs: Ordered collection of sub-paragraphs.
     """
 
     par_id: str
     text: str
+    label: str | None = None
     subparagraphs: SubParagraphList = field(default_factory=list)
 
 
@@ -87,7 +90,8 @@ def _get_paragraphs(body_tag: Tag) -> ParagraphList:
         classes = child.get("class", [])
 
         if "S_PAR" in classes or "S_ALN" in classes:
-            # For numbered paragraphs wrapped in S_ALN, extract body text.
+            # For numbered paragraphs wrapped in S_ALN,
+            # extract body text and label.
             if "S_ALN" in classes:
                 bdy = child.find("span", class_="S_ALN_BDY")
                 text = (
@@ -95,22 +99,32 @@ def _get_paragraphs(body_tag: Tag) -> ParagraphList:
                     if bdy
                     else child.get_text(strip=True)
                 )
+
+                label_tag = child.find("span", class_="S_ALN_TTL")
+                label = label_tag.get_text(strip=True) if label_tag else None
             else:
                 text = child.get_text(strip=True)
+                label = None
 
             par_id = child.get("id", "")
-            current_par = Paragraph(par_id=par_id, text=text)
+            current_par = Paragraph(par_id=par_id, text=text, label=label)
             paragraphs.append(current_par)
             continue
 
         if "S_LIT" in classes and current_par is not None:
             label_tag = child.find("span", class_="S_LIT_TTL")
-            label = label_tag.get_text(strip=True) if label_tag else ""
-
             bdy = child.find("span", class_="S_LIT_BDY")
             text = (
                 bdy.get_text(strip=True) if bdy else child.get_text(strip=True)
             )
+
+            label = label_tag.get_text(strip=True) if label_tag else ""
+            if not label:
+                # Extract label from the body when missing from S_LIT_TTL.
+                match = re.match(r"^(\([0-9]+\)|[a-z]\))", text)
+                if match:
+                    label = match.group(1)
+                    text = text[match.end() :].lstrip()
 
             sub_id = child.get("id", "")
             current_par.subparagraphs.append(
@@ -122,7 +136,11 @@ def _get_paragraphs(body_tag: Tag) -> ParagraphList:
             # Some documents may have S_ALN_BDY directly under the body.
             par_id = child.get("id", "")
             text = child.get_text(strip=True)
-            current_par = Paragraph(par_id=par_id, text=text)
+            match = re.match(r"^(\([0-9]+\))", text)
+            label = match.group(1) if match else None
+            if match:
+                text = text[match.end() :].lstrip()
+            current_par = Paragraph(par_id=par_id, text=text, label=label)
             paragraphs.append(current_par)
 
     return paragraphs
