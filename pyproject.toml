@@ -18,7 +18,7 @@ dependencies = [
   "click>=8.1.8,<9",
   "dotenv>=0.9.9",
   "requests>=2.32.3,<3",
-
+  "beautifulsoup4>=4.12,<5",
 ]
 
 [project.scripts]

@@ -1,2 +1,3 @@
 ## Unreleased
-- Add basic HTML parser and document fetcher.
+- Replace regex-based parser with BeautifulSoup implementation.
+- Add `convert` command to the CLI.

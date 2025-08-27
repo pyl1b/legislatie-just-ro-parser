@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, List
+from typing import List
 
 import requests
+from bs4 import BeautifulSoup, Tag
 
 # Type aliases
 ParagraphList = List[dict[str, str]]
@@ -45,26 +45,24 @@ class Article:
     paragraphs: ParagraphList = field(default_factory=list)
 
 
-ARTICLE_RE = re.compile(
-    r'<span class="S_ART"[^>]*id="(?P<id>id_art[^"]+)"[^>]*>.*?'
-    r'<span class="S_ART_BDY"[^>]*>(?P<body>.*)</span>\s*</span>',
-    re.DOTALL,
-)
-PARA_RE = re.compile(
-    r'<span class="S_(?:PAR|ALN_BDY)"[^>]*id="(?P<id>[^\"]+)"[^>]*>'
-    r"(?P<text>.*?)</span>",
-    re.DOTALL,
-)
-TAG_RE = re.compile(r"<[^>]+>")
+def _get_paragraphs(body_tag: Tag) -> ParagraphList:
+    """Extract paragraph information from an article body tag."""
+
+    paragraphs: ParagraphList = []
+
+    for p_tag in body_tag.find_all("span", class_=["S_PAR", "S_ALN_BDY"]):
+        # Paragraph identifier from the HTML element.
+        par_id = p_tag.get("id", "")
+
+        # Visible text without any markup.
+        text = p_tag.get_text(strip=True)
+
+        paragraphs.append({"par_id": par_id, "text": text})
+
+    return paragraphs
 
 
-def strip_tags(value: str) -> str:
-    """Remove HTML tags from a string."""
-
-    return TAG_RE.sub("", value).strip()
-
-
-def parse_html(html: str, ver_id: str) -> dict[str, Any]:
+def parse_html(html: str, ver_id: str) -> dict[str, object]:
     """Parse HTML content into structured data.
 
     Args:
@@ -75,20 +73,24 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
         Structured representation of the document.
     """
 
+    soup = BeautifulSoup(html, "html.parser")
+
     articles: List[Article] = []
 
-    for match in ARTICLE_RE.finditer(html):
-        article_id = match.group("id")
-        body = match.group("body")
+    for art_tag in soup.find_all("span", class_="S_ART"):
+        # Unique identifier of the article.
+        article_id = art_tag.get("id", "")
 
-        paragraphs: ParagraphList = []
+        body_tag = art_tag.find("span", class_="S_ART_BDY")
+        if body_tag is None:
+            # Skip if body is missing.
+            continue
 
-        for p_match in PARA_RE.finditer(body):
-            par_id = p_match.group("id")
-            text = strip_tags(p_match.group("text"))
-            paragraphs.append({"par_id": par_id, "text": text})
+        paragraphs = _get_paragraphs(body_tag)
 
-        full_text = strip_tags(body)
+        # Full text of the article.
+        full_text = body_tag.get_text(strip=True)
+
         articles.append(
             Article(
                 article_id=article_id,
@@ -111,7 +113,7 @@ CACHE_DIR = Path.home() / ".leropa"
 
 def fetch_document(
     ver_id: str, cache_dir: Path | None = None
-) -> dict[str, Any]:
+) -> dict[str, object]:
     """Fetch document HTML, using local cache when possible.
 
     Args:

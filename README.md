@@ -14,6 +14,19 @@ the structure defined below.
 
 The output can be saved into json or yaml formats.
 
+## Command Line Usage
+
+The package installs a console script named `leropa`. The `convert` command
+retrieves a document by its identifier and prints the structured representation
+as JSON:
+
+```
+leropa convert 123456
+```
+
+The command caches downloaded HTML in the user home directory to speed up
+subsequent conversions.
+
 ## Output Structure
 
 The top level object for each document level version is a dictionary
