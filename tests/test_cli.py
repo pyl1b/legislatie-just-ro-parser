@@ -238,3 +238,52 @@ def test_convert_generates_missing_ids(tmp_path: Path) -> None:
     id_col = headers.index("id") + 1
     generated_id = note_sheet.cell(row=2, column=id_col).value
     assert isinstance(generated_id, str) and generated_id.startswith("note_")
+
+
+def test_convert_wraps_long_and_list_values(tmp_path: Path) -> None:
+    """Ensure columns with lists or long text use wrapped cells."""
+
+    sample: dict[str, Any] = {
+        "document": {
+            "ver_id": "123",
+            "summary": "a" * 60,
+            "versions": [{"ver_id": "2"}],
+        },
+        "articles": [
+            {
+                "article_id": "a1",
+                "full_text": "b" * 60,
+                "paragraphs": [],
+                "notes": [],
+            }
+        ],
+    }
+    out_file = tmp_path / "out.xlsx"
+
+    with patch("leropa.parser.fetch_document", return_value=sample):
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.cli,
+            [
+                "convert",
+                "123",
+                "--format",
+                "xlsx",
+                "--output",
+                str(out_file),
+            ],
+        )
+
+    assert result.exit_code == 0
+    workbook = load_workbook(out_file)
+    doc_sheet = workbook["Document"]
+    headers = [cell.value for cell in doc_sheet[1]]
+    versions_col = headers.index("versions") + 1
+    summary_col = headers.index("summary") + 1
+    assert doc_sheet.cell(row=2, column=versions_col).alignment.wrapText
+    assert doc_sheet.cell(row=2, column=summary_col).alignment.wrapText
+
+    article_sheet = workbook["Article"]
+    headers = [cell.value for cell in article_sheet[1]]
+    full_text_col = headers.index("full_text") + 1
+    assert article_sheet.cell(row=2, column=full_text_col).alignment.wrapText

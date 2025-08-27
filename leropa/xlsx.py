@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 from uuid import uuid4
 
 from openpyxl import Workbook  # type: ignore[import-untyped]
+from openpyxl.styles import Alignment  # type: ignore[import-untyped]
 from openpyxl.utils import get_column_letter  # type: ignore[import-untyped]
 from openpyxl.worksheet.table import (  # type: ignore[import-untyped]
     Table,
@@ -292,17 +293,39 @@ def write_workbook(doc: Dict[str, Any], path: Path) -> None:
         headers = list(rows[0].keys())
         ws.append(headers)
 
+        # Track which column indexes require wrapped text.
+        wrap_columns: set[int] = set()
+
         for row in rows:
             values: List[Any] = []
 
             # Serialize complex structures to JSON strings.
-            for header in headers:
+            for idx, header in enumerate(headers):
                 cell_value = row.get(header)
+
+                # Mark columns with lists or dictionaries for text wrapping.
                 if isinstance(cell_value, (list, dict)):
+                    wrap_columns.add(idx)
                     cell_value = json.dumps(cell_value, ensure_ascii=False)
+
+                # Mark columns containing long text for wrapping.
+                if isinstance(cell_value, str) and len(cell_value) > 50:
+                    wrap_columns.add(idx)
+
                 values.append(cell_value)
 
             ws.append(values)
+
+        # Apply wrap text alignment to the marked columns.
+        for col_idx in wrap_columns:
+            for col_cells in ws.iter_cols(
+                min_col=col_idx + 1,
+                max_col=col_idx + 1,
+                min_row=1,
+                max_row=ws.max_row,
+            ):
+                for cell in col_cells:
+                    cell.alignment = Alignment(wrapText=True)
 
         # Determine table range covering the header and all rows.
         end_column = get_column_letter(len(headers))
