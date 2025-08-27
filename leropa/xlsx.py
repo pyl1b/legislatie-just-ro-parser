@@ -279,8 +279,11 @@ def write_workbook(doc: Dict[str, Any], path: Path) -> None:
 
     # Create a workbook and remove the default sheet created by openpyxl.
     workbook = Workbook()
+
+    # Remove the default sheet created by openpyxl when present.
     default_sheet = workbook.active
-    workbook.remove(default_sheet)
+    if default_sheet is not None:
+        workbook.remove(default_sheet)
 
     for sheet_name, rows in data.items():
         ws = workbook.create_sheet(title=sheet_name)
