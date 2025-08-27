@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup, Tag
 SubParagraphList = List["SubParagraph"]
 ParagraphList = List["Paragraph"]
 NoteList = List["Note"]
+HistoryList = List["HistoryEntry"]
 
 
 @dataclass
@@ -32,6 +33,19 @@ class SubParagraph:
 
 
 @dataclass
+class HistoryEntry:
+    """Version entry from the document history.
+
+    Attributes:
+        ver_id: Identifier for the document version.
+        date: Consolidation or republication date.
+    """
+
+    ver_id: str
+    date: str
+
+
+@dataclass
 class DocumentInfo:
     """Metadata about the parsed document.
 
@@ -41,6 +55,7 @@ class DocumentInfo:
         title: Document title from the HTML metadata.
         description: Document description from the HTML metadata.
         keywords: Document keywords from the HTML metadata.
+        history: Chronological list of earlier document versions.
         prev_ver: Identifier for previous version if available.
         next_ver: Identifier for next version if available.
     """
@@ -50,6 +65,7 @@ class DocumentInfo:
     title: str | None = None
     description: str | None = None
     keywords: str | None = None
+    history: HistoryList = field(default_factory=list)
     prev_ver: str | None = None
     next_ver: str | None = None
 
@@ -245,6 +261,40 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
     description = description_tag.get("content") if description_tag else None
     keywords = keywords_tag.get("content") if keywords_tag else None
 
+    # Collect historical versions from the consolidation list.
+    history: HistoryList = []
+    history_div = soup.find("div", id="istoric_fa")
+    if history_div:
+        # Iterate through all links representing previous versions.
+        for link in history_div.find_all("a"):
+            href = link.get("href")
+
+            # Skip entries without hyperlinks as they point to the current
+            # version.
+            if not href:
+                continue
+
+            # Extract the version identifier from the URL.
+            ver_match = re.search(r"/(\d+)(?:\?|$)", href)
+            if not ver_match:
+                continue
+
+            # Determine the date from the link text or title attribute.
+            text = link.get_text(strip=True)
+            title_text = link.get("title", "")
+            source = (
+                text if re.search(r"\d{2}\.\d{2}\.\d{4}", text) else title_text
+            )
+            date_match = re.search(r"(\d{2}\.\d{2}\.\d{4})", source)
+            if not date_match:
+                continue
+
+            history.append(
+                HistoryEntry(
+                    ver_id=ver_match.group(1), date=date_match.group(1)
+                )
+            )
+
     articles: List[Article] = []
 
     for art_tag in soup.find_all("span", class_="S_ART"):
@@ -272,13 +322,17 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
 
     source = f"https://legislatie.just.ro/Public/DetaliiDocument/{ver_id}"
 
-    # Store metadata in the document info.
+    # Store metadata and history in the document info.
     document = DocumentInfo(
         source=source,
         ver_id=ver_id,
         title=title,
         description=description,
         keywords=keywords,
+        # Include the parsed history.
+        history=history,
+        # The latest previous version becomes prev_ver for convenience.
+        prev_ver=history[0].ver_id if history else None,
     )
 
     return {
