@@ -3,9 +3,9 @@
 import json
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore
 from click.testing import CliRunner
-from openpyxl import load_workbook
+from openpyxl import load_workbook  # type: ignore
 from pytest_mock import MockerFixture
 
 from leropa import cli

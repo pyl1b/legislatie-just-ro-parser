@@ -20,7 +20,7 @@ The package installs a console script named `leropa`. The `convert` command
 retrieves a document by its identifier and prints the structured representation
 as JSON:
 
-```
+```bash
 leropa convert 123456
 ```
 
