@@ -1,6 +1,8 @@
 {
     "cSpell.words": [
-        "leropa"
+        "legislatie",
+        "leropa",
+        "sheetnames"
     ],
     "python.formatting.provider": "none",
     "editor.defaultFormatter": "charliermarsh.ruff",
