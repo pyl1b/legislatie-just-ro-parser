@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup, Tag
 # Type aliases
 SubParagraphList = List["SubParagraph"]
 ParagraphList = List["Paragraph"]
+NoteList = List["Note"]
 
 
 @dataclass
@@ -61,11 +62,13 @@ class Article:
         article_id: Identifier for the article element in the source HTML.
         full_text: Full text content of the article.
         paragraphs: Ordered collection of paragraphs within the article.
+        notes: Notes attached to the article body.
     """
 
     article_id: str
     full_text: str
     paragraphs: ParagraphList = field(default_factory=list)
+    notes: NoteList = field(default_factory=list)
 
 
 @dataclass
@@ -77,29 +80,67 @@ class Paragraph:
         text: Visible text content of the paragraph without the label.
         label: Enumerated label such as "(1)" if present.
         subparagraphs: Ordered collection of sub-paragraphs.
+        notes: Notes with amendment information.
     """
 
     par_id: str
     text: str
     label: str | None = None
     subparagraphs: SubParagraphList = field(default_factory=list)
+    notes: NoteList = field(default_factory=list)
 
 
-def _get_paragraphs(body_tag: Tag) -> ParagraphList:
-    """Extract paragraph information from an article body tag."""
+@dataclass
+class Note:
+    """Amendment note attached to an article or paragraph."""
+
+    note_id: str
+    text: str
+
+
+def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
+    """Extract paragraph and note information from an article body tag."""
 
     paragraphs: ParagraphList = []
+    notes: NoteList = []
 
     current_par: Paragraph | None = None
 
     for child in body_tag.find_all("span", recursive=False):
         classes = child.get("class", [])
 
+        # Handle article-level notes.
+        if "S_NTA" in classes:
+            title_tag = child.find("span", class_="S_NTA_TTL")
+            if title_tag:
+                title_tag.extract()
+
+            note_id = child.get("id", "")
+            notes.append(
+                Note(note_id=note_id, text=child.get_text(" ", strip=True))
+            )
+
+            child.decompose()
+            continue
+
         if "S_PAR" in classes or "S_ALN" in classes:
             # For numbered paragraphs wrapped in S_ALN,
             # extract body text and label.
+            notes_in_par: NoteList = []
             if "S_ALN" in classes:
                 bdy = child.find("span", class_="S_ALN_BDY")
+                if bdy:
+                    # Extract notes embedded within the paragraph body.
+                    for note in bdy.find_all("span", class_="S_PAR"):
+                        note_id = note.get("id", "")
+                        notes_in_par.append(
+                            Note(
+                                note_id=note_id,
+                                text=note.get_text(" ", strip=True),
+                            )
+                        )
+
+                        note.extract()
                 text = (
                     bdy.get_text(strip=True)
                     if bdy
@@ -109,17 +150,37 @@ def _get_paragraphs(body_tag: Tag) -> ParagraphList:
                 label_tag = child.find("span", class_="S_ALN_TTL")
                 label = label_tag.get_text(strip=True) if label_tag else None
             else:
+                # Extract notes embedded within plain paragraph tags.
+                for note in child.find_all("span", class_="S_PAR"):
+                    note_id = note.get("id", "")
+                    notes_in_par.append(
+                        Note(
+                            note_id=note_id,
+                            text=note.get_text(" ", strip=True),
+                        )
+                    )
+
+                    note.extract()
                 text = child.get_text(strip=True)
                 label = None
 
             par_id = child.get("id", "")
-            current_par = Paragraph(par_id=par_id, text=text, label=label)
+            current_par = Paragraph(
+                par_id=par_id,
+                text=text,
+                label=label,
+                notes=notes_in_par,
+            )
             paragraphs.append(current_par)
             continue
 
         if "S_LIT" in classes and current_par is not None:
             label_tag = child.find("span", class_="S_LIT_TTL")
             bdy = child.find("span", class_="S_LIT_BDY")
+            if bdy:
+                # Remove notes from subparagraph bodies.
+                for note in bdy.find_all("span", class_="S_PAR"):
+                    note.extract()
             text = (
                 bdy.get_text(strip=True) if bdy else child.get_text(strip=True)
             )
@@ -140,6 +201,8 @@ def _get_paragraphs(body_tag: Tag) -> ParagraphList:
 
         if "S_ALN_BDY" in classes:
             # Some documents may have S_ALN_BDY directly under the body.
+            for note in child.find_all("span", class_="S_PAR"):
+                note.extract()
             par_id = child.get("id", "")
             text = child.get_text(strip=True)
             match = re.match(r"^(\([0-9]+\))", text)
@@ -149,7 +212,7 @@ def _get_paragraphs(body_tag: Tag) -> ParagraphList:
             current_par = Paragraph(par_id=par_id, text=text, label=label)
             paragraphs.append(current_par)
 
-    return paragraphs
+    return paragraphs, notes
 
 
 def parse_html(html: str, ver_id: str) -> dict[str, object]:
@@ -193,9 +256,9 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
             # Skip if body is missing.
             continue
 
-        paragraphs = _get_paragraphs(body_tag)
+        paragraphs, notes = _get_paragraphs(body_tag)
 
-        # Full text of the article.
+        # Full text of the article without notes.
         full_text = body_tag.get_text(strip=True)
 
         articles.append(
@@ -203,6 +266,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
                 article_id=article_id,
                 full_text=full_text,
                 paragraphs=paragraphs,
+                notes=notes,
             )
         )
 

@@ -5,3 +5,4 @@
 - Add YAML and XLSX output formats for `convert` command.
 - Parse sub-paragraphs labelled with letters within paragraphs.
 - Capture document metadata (title, description, keywords) in the parser.
+- Extract amendment notes for articles and paragraphs.

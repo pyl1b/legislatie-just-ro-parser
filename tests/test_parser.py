@@ -62,6 +62,28 @@ SAMPLE_HTML_BODY_LABEL = """
 """
 
 
+SAMPLE_HTML_WITH_NOTES = """
+<span class="S_ART" id="id_art_notes">
+    <span class="S_ART_TTL" id="id_art_notes_ttl">Articolul 3</span>
+    <span class="S_ART_BDY" id="id_art_notes_bdy">
+        <span class="S_ALN" id="id_par_note">
+            <span class="S_ALN_TTL" id="id_par_note_ttl">(1)</span>
+            <span class="S_ALN_BDY" id="id_par_note_bdy">
+                Paragraph text.
+                <span class="S_PAR" id="id_note_par">
+                    (la 01-01-2020, paragraph changed)
+                </span>
+            </span>
+        </span>
+        <span class="S_NTA" id="id_note_art">
+            <span class="S_NTA_TTL">Notă</span>
+            <span class="S_NTA_PAR">Article note.</span>
+        </span>
+    </span>
+</span>
+"""
+
+
 def test_parse_html_extracts_articles() -> None:
     doc = parser.parse_html(SAMPLE_HTML, "123")
     assert doc["document"]["ver_id"] == "123"
@@ -97,3 +119,18 @@ def test_metadata_extraction() -> None:
     assert info["title"] == "Sample Document"
     assert info["description"] == "Sample description"
     assert info["keywords"] == "kw1, kw2"
+
+
+def test_parse_notes() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_WITH_NOTES, "999")
+    article = doc["articles"][0]
+    paragraph = article["paragraphs"][0]
+
+    assert paragraph["text"].strip() == "Paragraph text."
+    assert (
+        paragraph["notes"][0]["text"] == "(la 01-01-2020, paragraph changed)"
+    )
+    assert paragraph["notes"][0]["note_id"] == "id_note_par"
+
+    assert article["notes"][0]["text"] == "Article note."
+    assert article["notes"][0]["note_id"] == "id_note_art"
