@@ -84,6 +84,20 @@ SAMPLE_HTML_WITH_NOTES = """
 """
 
 
+SAMPLE_HTML_WITH_HISTORY = """
+<html>
+  <body>
+    <div id="istoric_fa">
+      <a title='Consolidarea din 02.07.2010'
+         href='~/../../../Public/DetaliiDocument/120341'>02.07.2010</a>
+      <a title='Consolidarea din 12.11.2009'
+         href='~/../../../Public/DetaliiDocument/113617'>12.11.2009</a>
+    </div>
+  </body>
+</html>
+"""
+
+
 def test_parse_html_extracts_articles() -> None:
     doc = parser.parse_html(SAMPLE_HTML, "123")
     assert doc["document"]["ver_id"] == "123"
@@ -134,3 +148,12 @@ def test_parse_notes() -> None:
 
     assert article["notes"][0]["text"] == "Article note."
     assert article["notes"][0]["note_id"] == "id_note_art"
+
+
+def test_version_history_extraction() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_WITH_HISTORY, "321")
+    info = doc["document"]
+    assert info["history"][0]["ver_id"] == "120341"
+    assert info["history"][0]["date"] == "02.07.2010"
+    assert info["prev_ver"] == "120341"
+    assert info["history"][1]["ver_id"] == "113617"
