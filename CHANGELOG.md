@@ -9,3 +9,4 @@
 - Parse consolidation history and expose previous versions.
 - Parse books, titles and chapters linking articles accordingly.
 - Handle numbered paragraphs marked with ``S_LIT`` tags.
+- Ignore hidden ``S_LIT_SHORT`` placeholders to avoid stray ellipsis in text.
