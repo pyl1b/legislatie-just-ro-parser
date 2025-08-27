@@ -7,9 +7,9 @@ from typing import Optional
 import click
 import yaml  # type: ignore
 from dotenv import load_dotenv
-from openpyxl import Workbook  # type: ignore
 
 from leropa import parser
+from leropa.xlsx import write_workbook
 
 try:
     __version__ = version("leropa")
@@ -128,55 +128,6 @@ def convert(
         if final_path is None:
             raise click.UsageError("Output file is required for xlsx format.")
 
-        workbook = Workbook()
-
-        # Remove default sheet created by Workbook.
-        default_sheet = workbook.active
-        assert default_sheet is not None
-        workbook.remove(default_sheet)
-
-        for key, value in doc.items():
-            sheet = workbook.create_sheet(title=key)
-
-            if isinstance(value, list) and value:
-                headers = list(value[0].keys())
-                sheet.append(headers)
-
-                for item in value:
-                    row = []
-                    for h in headers:
-                        cell_value = item.get(h)
-                        if isinstance(cell_value, (list, dict)):
-                            cell_value = json.dumps(
-                                cell_value, ensure_ascii=False
-                            )
-                        row.append(cell_value)
-                    sheet.append(row)
-            elif isinstance(value, dict):
-                sheet.append(list(value.keys()))
-
-                # Build a row with the dictionary values while serializing
-                # any lists or dictionaries to JSON so that Excel can
-                # properly store them as strings instead of complex types.
-                row = []
-                for k in value.keys():
-                    cell_value = value.get(k)
-
-                    if isinstance(cell_value, (list, dict)):
-                        cell_value = json.dumps(cell_value, ensure_ascii=False)
-
-                    row.append(cell_value)
-
-                sheet.append(row)
-            else:
-                sheet.append(["value"])
-
-                # Serialize any non-tabular value so that complex types are
-                # safely stored as JSON strings in Excel.
-                cell_value = value
-                if isinstance(cell_value, (list, dict)):
-                    cell_value = json.dumps(cell_value, ensure_ascii=False)
-
-                sheet.append([cell_value])
-
-        workbook.save(final_path)
+        # Write the structured data to the workbook using the dedicated
+        # helper function that organizes sheets and tables.
+        write_workbook(doc, final_path)
