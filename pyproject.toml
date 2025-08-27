@@ -19,6 +19,7 @@ dependencies = [
   "dotenv>=0.9.9",
   "requests>=2.32.3,<3",
   "beautifulsoup4>=4.12,<5",
+  "attrs>=23,<24",
   "pyyaml>=6.0,<7",
   "openpyxl>=3.1,<4",
 ]
@@ -40,6 +41,7 @@ dev = [
   "types-requests",
   "types-PyYAML",
   "types-openpyxl",
+  "types-attrs",
 ]
 
 
@@ -68,3 +70,10 @@ ignore = []
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.mypy]
+plugins = []
+
+[[tool.mypy.overrides]]
+module = "leropa.parser.*"
+ignore_errors = true
