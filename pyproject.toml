@@ -30,13 +30,16 @@ leropa = "leropa.__main__:cli"
 dev = [
   "ruff",
   "build",
-  "mypy",
+  "mypy>=1.8,<2",
   "pre-commit",
   "pytest-cov",
   "pytest-mock",
   "pytest",
   "twine",
   "wheel",
+  "types-requests",
+  "types-PyYAML",
+  "types-openpyxl",
 ]
 
 
