@@ -7,3 +7,4 @@
 - Capture document metadata (title, description, keywords) in the parser.
 - Extract amendment notes for articles and paragraphs.
 - Parse consolidation history and expose previous versions.
+- Parse books, titles and chapters linking articles accordingly.

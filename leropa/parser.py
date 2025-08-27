@@ -15,6 +15,10 @@ SubParagraphList = List["SubParagraph"]
 ParagraphList = List["Paragraph"]
 NoteList = List["Note"]
 HistoryList = List["HistoryEntry"]
+ArticleList = List["Article"]
+ChapterList = List["Chapter"]
+TitleList = List["Title"]
+BookList = List["Book"]
 
 
 @dataclass
@@ -112,6 +116,63 @@ class Note:
 
     note_id: str
     text: str
+
+
+@dataclass
+class Chapter:
+    """Chapter grouping multiple articles.
+
+    Attributes:
+        chapter_id: Identifier for the chapter body in the source HTML.
+        title: Chapter label such as "Capitolul I".
+        description: Descriptive text for the chapter if present.
+        articles: Ordered list of articles contained in the chapter.
+    """
+
+    chapter_id: str
+    title: str
+    description: str | None = None
+    articles: ArticleList = field(default_factory=list)
+
+
+@dataclass
+class Title:
+    """Title grouping chapters and articles.
+
+    Attributes:
+        title_id: Identifier for the title body in the source HTML.
+        title: Title label such as "Titlul I".
+        description: Descriptive text for the title if present.
+        chapters: Ordered list of chapters within the title.
+        articles: Articles that appear directly under the title.
+    """
+
+    title_id: str
+    title: str
+    description: str | None = None
+    chapters: ChapterList = field(default_factory=list)
+    articles: ArticleList = field(default_factory=list)
+
+
+@dataclass
+class Book:
+    """Book grouping titles, chapters and articles.
+
+    Attributes:
+        book_id: Identifier for the book body in the source HTML.
+        title: Book label such as "Cartea I".
+        description: Descriptive text for the book if present.
+        titles: Ordered list of titles within the book.
+        chapters: Chapters directly contained in the book.
+        articles: Articles that appear directly under the book.
+    """
+
+    book_id: str
+    title: str
+    description: str | None = None
+    titles: TitleList = field(default_factory=list)
+    chapters: ChapterList = field(default_factory=list)
+    articles: ArticleList = field(default_factory=list)
 
 
 def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
@@ -231,6 +292,146 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
     return paragraphs, notes
 
 
+def _parse_article(art_tag: Tag) -> Article | None:
+    """Create an article dataclass from the given tag.
+
+    Args:
+        art_tag: Tag representing the article in the HTML.
+
+    Returns:
+        Parsed Article instance or ``None`` when body is missing.
+    """
+
+    # Unique identifier of the article.
+    article_id = art_tag.get("id", "")
+
+    # Body container that holds the paragraphs and notes.
+    body_tag = art_tag.find("span", class_="S_ART_BDY")
+    if body_tag is None:
+        return None
+
+    # Extract paragraphs and associated notes.
+    paragraphs, notes = _get_paragraphs(body_tag)
+
+    # Full text of the article without notes.
+    full_text = body_tag.get_text(strip=True)
+
+    return Article(
+        article_id=article_id,
+        full_text=full_text,
+        paragraphs=paragraphs,
+        notes=notes,
+    )
+
+
+def _ensure_book(art_tag: Tag, books: dict[str, Book]) -> Book | None:
+    """Retrieve or create a book for the given article tag."""
+
+    # Locate the nearest book body containing the article.
+    book_body = art_tag.find_parent("span", class_="S_CRT_BDY")
+    if not book_body:
+        return None
+
+    # Use the book body identifier to deduplicate books.
+    book_id = book_body.get("id", "")
+    if book_id in books:
+        return books[book_id]
+
+    # Determine the book title and description from preceding siblings.
+    title_tag = book_body.find_previous("span", class_="S_CRT_TTL")
+    desc_tag = book_body.find_previous("span", class_="S_CRT_DEN")
+
+    # Textual information for the book.
+    title = title_tag.get_text(strip=True) if title_tag else ""
+    description = desc_tag.get_text(strip=True) if desc_tag else None
+
+    # Create and store the new book instance.
+    book = Book(book_id=book_id, title=title, description=description)
+    books[book_id] = book
+    return book
+
+
+def _ensure_title(
+    art_tag: Tag, titles: dict[str, Title], book: Book | None
+) -> Title | None:
+    """Retrieve or create a title for the given article tag."""
+
+    # Locate the nearest title body containing the article.
+    title_body = art_tag.find_parent("span", class_="S_TTL_BDY")
+    if not title_body:
+        return None
+
+    # Use the title body identifier to deduplicate titles.
+    title_id = title_body.get("id", "")
+    title_obj = titles.get(title_id)
+
+    if title_obj is None:
+        # Determine the title label and description from preceding siblings.
+        title_tag = title_body.find_previous("span", class_="S_TTL_TTL")
+        desc_tag = title_body.find_previous("span", class_="S_TTL_DEN")
+
+        # Textual information for the title.
+        title_text = title_tag.get_text(strip=True) if title_tag else ""
+        description = desc_tag.get_text(strip=True) if desc_tag else None
+
+        # Create and store the new title instance.
+        title_obj = Title(
+            title_id=title_id,
+            title=title_text,
+            description=description,
+        )
+        titles[title_id] = title_obj
+
+    # Attach the title to the parent book if needed.
+    if book and all(t.title_id != title_id for t in book.titles):
+        book.titles.append(title_obj)
+
+    return title_obj
+
+
+def _ensure_chapter(
+    art_tag: Tag,
+    chapters: dict[str, Chapter],
+    title: Title | None,
+    book: Book | None,
+) -> Chapter | None:
+    """Retrieve or create a chapter for the given article tag."""
+
+    # Locate the nearest chapter body containing the article.
+    chapter_body = art_tag.find_parent("span", class_="S_CAP_BDY")
+    if not chapter_body:
+        return None
+
+    # Use the chapter body identifier to deduplicate chapters.
+    chapter_id = chapter_body.get("id", "")
+    chapter = chapters.get(chapter_id)
+
+    if chapter is None:
+        # Determine the chapter label and description from preceding siblings.
+        title_tag = chapter_body.find_previous("span", class_="S_CAP_TTL")
+        desc_tag = chapter_body.find_previous("span", class_="S_CAP_DEN")
+
+        # Textual information for the chapter.
+        chap_title = title_tag.get_text(strip=True) if title_tag else ""
+        description = desc_tag.get_text(strip=True) if desc_tag else None
+
+        # Create and store the new chapter instance.
+        chapter = Chapter(
+            chapter_id=chapter_id,
+            title=chap_title,
+            description=description,
+        )
+        chapters[chapter_id] = chapter
+
+    # Attach the chapter to the parent title or book.
+    if title and all(c.chapter_id != chapter_id for c in title.chapters):
+        title.chapters.append(chapter)
+    elif book and all(c.chapter_id != chapter_id for c in book.chapters):
+        book.chapters.append(chapter)
+
+    return chapter
+
+
 def parse_html(html: str, ver_id: str) -> dict[str, object]:
     """Parse HTML content into structured data.
 
@@ -295,30 +496,34 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
                 )
             )
 
-    articles: List[Article] = []
+    # Store all parsed articles for backward compatibility.
+    articles: ArticleList = []
+
+    # Temporary registries for hierarchical structures to avoid duplicates.
+    books: dict[str, Book] = {}
+    titles: dict[str, Title] = {}
+    chapters: dict[str, Chapter] = {}
 
     for art_tag in soup.find_all("span", class_="S_ART"):
-        # Unique identifier of the article.
-        article_id = art_tag.get("id", "")
-
-        body_tag = art_tag.find("span", class_="S_ART_BDY")
-        if body_tag is None:
-            # Skip if body is missing.
+        # Parse the article tag into a dataclass.
+        article = _parse_article(art_tag)
+        if article is None:
             continue
 
-        paragraphs, notes = _get_paragraphs(body_tag)
+        # Ensure parent containers exist and retrieve them.
+        book = _ensure_book(art_tag, books)
+        title_obj = _ensure_title(art_tag, titles, book)
+        chapter = _ensure_chapter(art_tag, chapters, title_obj, book)
 
-        # Full text of the article without notes.
-        full_text = body_tag.get_text(strip=True)
+        # Attach the article to the deepest container available.
+        if chapter:
+            chapter.articles.append(article)
+        elif title_obj:
+            title_obj.articles.append(article)
+        elif book:
+            book.articles.append(article)
 
-        articles.append(
-            Article(
-                article_id=article_id,
-                full_text=full_text,
-                paragraphs=paragraphs,
-                notes=notes,
-            )
-        )
+        articles.append(article)
 
     source = f"https://legislatie.just.ro/Public/DetaliiDocument/{ver_id}"
 
@@ -338,6 +543,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
     return {
         "document": asdict(document),
         "articles": [asdict(a) for a in articles],
+        "books": [asdict(b) for b in books.values()],
     }
 
 
