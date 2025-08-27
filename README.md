@@ -5,7 +5,9 @@
 structured data. It fetches documents on demand, caches the retrieved HTML and
 parses it with BeautifulSoup into a hierarchy that includes metadata,
 books, titles, chapters, sections, articles, paragraphs and notes, along with
-the document's consolidation history.
+the document's consolidation history. Sections whose titles use numeric
+patterns such as ``1.2.3`` are nested under their numeric parents and expose a
+``level`` attribute that reflects their depth in the hierarchy.
 
 The resulting structure can be exported as JSON, YAML or XLSX. Spreadsheet
 exports place each type of data on its own worksheet.

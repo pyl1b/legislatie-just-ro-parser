@@ -292,12 +292,50 @@ SAMPLE_HTML_WITH_PCT_SECTION = """
 <span class="S_CAP_BDY" id="id_chap_bdy">
     <span class="S_PCT" id="id_pct">
         <span class="S_PCT_TTL" id="id_pct_ttl">2.1.</span>
-        <span class="S_PCT_BDY" id="id_pct_bdy">
+<span class="S_PCT_BDY" id="id_pct_bdy">
             Cuprinsul cărții funciare
             <span class="S_ART" id="id_art_pct">
                 <span class="S_ART_TTL" id="id_art_pct_ttl">Articolul 1</span>
                 <span class="S_ART_BDY" id="id_art_pct_bdy">
                     <span class="S_PAR" id="id_par_pct">Text.</span>
+                </span>
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
+SAMPLE_HTML_NUMBERED_SECTIONS = """
+<span class="S_CAP_TTL" id="id_chap_num_ttl">Capitolul I</span>
+<span class="S_CAP_BDY" id="id_chap_num_bdy">
+    <span class="S_SEC_TTL" id="id_sec_num1_ttl">1</span>
+    <span class="S_SEC_BDY" id="id_sec_num1_bdy">
+        <span class="S_ART" id="id_art_sec1">
+            <span class="S_ART_TTL" id="id_art_sec1_ttl">Articolul 1</span>
+            <span class="S_ART_BDY" id="id_art_sec1_bdy">
+                <span class="S_PAR" id="id_par_sec1">Text.</span>
+            </span>
+        </span>
+        <span class="S_SEC_TTL" id="id_sec_num1_1_ttl">1.1</span>
+        <span class="S_SEC_BDY" id="id_sec_num1_1_bdy">
+            <span class="S_ART" id="id_art_sec1_1">
+                <span class="S_ART_TTL" id="id_art_sec1_1_ttl">
+                    Articolul 2
+                </span>
+                <span class="S_ART_BDY" id="id_art_sec1_1_bdy">
+                    <span class="S_PAR" id="id_par_sec1_1">Text.</span>
+                </span>
+            </span>
+            <span class="S_SEC_TTL" id="id_sec_num1_1_1_ttl">1.1.1</span>
+            <span class="S_SEC_BDY" id="id_sec_num1_1_1_bdy">
+                <span class="S_ART" id="id_art_sec1_1_1">
+                    <span class="S_ART_TTL" id="id_art_sec1_1_1_ttl">
+                        Articolul 3
+                    </span>
+                    <span class="S_ART_BDY" id="id_art_sec1_1_1_bdy">
+                        <span class="S_PAR" id="id_par_sec1_1_1">Text.</span>
+                    </span>
                 </span>
             </span>
         </span>
@@ -478,8 +516,23 @@ def test_section_and_subsection_parsing() -> None:
     section = chapter["sections"][0]
     assert section["section_id"] == "id_sec1_bdy"
     subsection = section["subsections"][0]
-    assert subsection["subsection_id"] == "id_sub1_bdy"
+    assert subsection["section_id"] == "id_sub1_bdy"
     assert subsection["articles"][0] == "id_art1"
+
+
+def test_numbered_section_hierarchy() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_NUMBERED_SECTIONS, "1001")
+    book = doc["books"][0]
+    chapter = book["chapters"][0]
+    section = chapter["sections"][0]
+    assert section["title"] == "1"
+    assert section["level"] == 1
+    child = section["subsections"][0]
+    assert child["title"] == "1.1"
+    assert child["level"] == 2
+    grandchild = child["subsections"][0]
+    assert grandchild["title"] == "1.1.1"
+    assert grandchild["level"] == 3
 
 
 def test_chapter_without_book() -> None:

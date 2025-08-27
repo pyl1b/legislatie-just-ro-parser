@@ -19,3 +19,5 @@
 - Generate default hierarchy when chapters or sections lack parent books.
 - Export each data type to its own PascalCase sheet in XLSX output with
   parent-child identifiers and Excel tables.
+- Detect numeric section titles, assigning a ``level`` and nesting child
+  sections under their parents.
