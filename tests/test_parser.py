@@ -122,13 +122,22 @@ SAMPLE_HTML_WITH_NOTES = """
             <span class="S_ALN_BDY" id="id_par_note_bdy">
                 Paragraph text.
                 <span class="S_PAR" id="id_note_par">
-                    (la 01-01-2020, paragraph changed)
+                    (la 01-01-2020,
+                    Alin. (2) al art. 287 a fost modificat de art. IX din
+                    LEGEA nr. 60 din 10 aprilie 2012, publicată în
+                    MONITORUL OFICIAL nr. 255 din 17 aprilie 2012,
+                    prin înlocuirea sintagmei "serviciul de stare civilă" cu
+                    sintagma "serviciul public comunitar local de evidență a
+                    persoanelor".
+                    )
                 </span>
             </span>
         </span>
         <span class="S_NTA" id="id_note_art">
             <span class="S_NTA_TTL">Notă</span>
-            <span class="S_NTA_PAR">Article note.</span>
+            <span class="S_NTA_PAR">
+                Article note.
+            </span>
         </span>
     </span>
 </span>
@@ -263,13 +272,34 @@ def test_parse_notes() -> None:
     paragraph = article["paragraphs"][0]
 
     assert paragraph["text"].strip() == "Paragraph text."
-    assert (
-        paragraph["notes"][0]["text"] == "(la 01-01-2020, paragraph changed)"
+    note = paragraph["notes"][0]
+    expected_text = (
+        "(la 01-01-2020, Alin. (2) al art. 287 a fost modificat de "
+        "art. IX din LEGEA nr. 60 din 10 aprilie 2012, publicată în "
+        "MONITORUL OFICIAL nr. 255 din 17 aprilie 2012, prin "
+        'înlocuirea sintagmei "serviciul de stare civilă" cu '
+        'sintagma "serviciul public comunitar local de evidență a '
+        'persoanelor".)'
     )
-    assert paragraph["notes"][0]["note_id"] == "id_note_par"
+    assert note["text"] == expected_text
+    assert note["note_id"] == "id_note_par"
+    assert note["date"] == "01-01-2020"
+    assert note["subject"] == "Alin. (2) al art. 287"
+    assert note["law_number"] == "60"
+    assert note["law_date"] == "10 aprilie 2012"
+    assert note["monitor_number"] == "255"
+    assert note["monitor_date"] == "17 aprilie 2012"
+    assert note["replaced"] == "serviciul de stare civilă"
+    assert (
+        note["replacement"]
+        == "serviciul public comunitar local de evidență a persoanelor"
+    )
 
-    assert article["notes"][0]["text"] == "Article note."
-    assert article["notes"][0]["note_id"] == "id_note_art"
+    art_note = article["notes"][0]
+    assert art_note["text"] == "Article note."
+    assert art_note["note_id"] == "id_note_art"
+    assert art_note["date"] is None
+    assert art_note["law_number"] is None
 
 
 def test_preserves_space_around_links() -> None:
