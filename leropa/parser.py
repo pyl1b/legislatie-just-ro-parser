@@ -19,6 +19,8 @@ ArticleList = List["Article"]
 ChapterList = List["Chapter"]
 TitleList = List["Title"]
 BookList = List["Book"]
+SectionList = List["Section"]
+SubsectionList = List["Subsection"]
 
 
 @dataclass
@@ -119,31 +121,70 @@ class Note:
 
 
 @dataclass
-class Chapter:
-    """Chapter grouping multiple articles.
+class Subsection:
+    """Subsection grouping articles inside a section.
 
     Attributes:
-        chapter_id: Identifier for the chapter body in the source HTML.
-        title: Chapter label such as "Capitolul I".
-        description: Descriptive text for the chapter if present.
-        articles: Ordered list of articles contained in the chapter.
+        subsection_id: Identifier for the subsection body in the source HTML.
+        title: Subsection label such as "§1".
+        description: Descriptive text for the subsection if present.
+        articles: Ordered list of articles contained in the subsection.
     """
 
-    chapter_id: str
+    subsection_id: str
     title: str
     description: str | None = None
     articles: ArticleList = field(default_factory=list)
 
 
 @dataclass
+class Section:
+    """Section grouping subsections and articles.
+
+    Attributes:
+        section_id: Identifier for the section body in the source HTML.
+        title: Section label such as "Secţiunea I".
+        description: Descriptive text for the section if present.
+        subsections: Ordered list of subsections within the section.
+        articles: Articles that appear directly under the section.
+    """
+
+    section_id: str
+    title: str
+    description: str | None = None
+    subsections: SubsectionList = field(default_factory=list)
+    articles: ArticleList = field(default_factory=list)
+
+
+@dataclass
+class Chapter:
+    """Chapter grouping sections and articles.
+
+    Attributes:
+        chapter_id: Identifier for the chapter body in the source HTML.
+        title: Chapter label such as "Capitolul I".
+        description: Descriptive text for the chapter if present.
+        sections: Ordered list of sections within the chapter.
+        articles: Ordered list of articles contained in the chapter.
+    """
+
+    chapter_id: str
+    title: str
+    description: str | None = None
+    sections: SectionList = field(default_factory=list)
+    articles: ArticleList = field(default_factory=list)
+
+
+@dataclass
 class Title:
-    """Title grouping chapters and articles.
+    """Title grouping chapters, sections and articles.
 
     Attributes:
         title_id: Identifier for the title body in the source HTML.
         title: Title label such as "Titlul I".
         description: Descriptive text for the title if present.
         chapters: Ordered list of chapters within the title.
+        sections: Ordered list of sections within the title.
         articles: Articles that appear directly under the title.
     """
 
@@ -151,12 +192,13 @@ class Title:
     title: str
     description: str | None = None
     chapters: ChapterList = field(default_factory=list)
+    sections: SectionList = field(default_factory=list)
     articles: ArticleList = field(default_factory=list)
 
 
 @dataclass
 class Book:
-    """Book grouping titles, chapters and articles.
+    """Book grouping titles, chapters, sections and articles.
 
     Attributes:
         book_id: Identifier for the book body in the source HTML.
@@ -164,6 +206,7 @@ class Book:
         description: Descriptive text for the book if present.
         titles: Ordered list of titles within the book.
         chapters: Chapters directly contained in the book.
+        sections: Sections directly contained in the book.
         articles: Articles that appear directly under the book.
     """
 
@@ -172,6 +215,7 @@ class Book:
     description: str | None = None
     titles: TitleList = field(default_factory=list)
     chapters: ChapterList = field(default_factory=list)
+    sections: SectionList = field(default_factory=list)
     articles: ArticleList = field(default_factory=list)
 
 
@@ -432,6 +476,102 @@ def _ensure_chapter(
     return chapter
 
 
+def _ensure_section(
+    art_tag: Tag,
+    sections: dict[str, Section],
+    chapter: Chapter | None,
+    title: Title | None,
+    book: Book | None,
+) -> Section | None:
+    """Retrieve or create a section for the given article tag."""
+
+    # Locate the nearest section body containing the article.
+    section_body = art_tag.find_parent("span", class_="S_SEC_BDY")
+    if not section_body:
+        return None
+
+    # Use the section body identifier to deduplicate sections.
+    section_id = section_body.get("id", "")
+    section = sections.get(section_id)
+
+    if section is None:
+        # Determine the section label and description from preceding siblings.
+        title_tag = section_body.find_previous("span", class_="S_SEC_TTL")
+        desc_tag = section_body.find_previous("span", class_="S_SEC_DEN")
+
+        # Textual information for the section.
+        sec_title = title_tag.get_text(strip=True) if title_tag else ""
+        description = desc_tag.get_text(strip=True) if desc_tag else None
+
+        # Create and store the new section instance.
+        section = Section(
+            section_id=section_id,
+            title=sec_title,
+            description=description,
+        )
+        sections[section_id] = section
+
+    # Attach the section to the parent container.
+    if chapter and all(s.section_id != section_id for s in chapter.sections):
+        chapter.sections.append(section)
+    elif (
+        title
+        and hasattr(title, "sections")
+        and all(s.section_id != section_id for s in title.sections)
+    ):
+        title.sections.append(section)
+    elif (
+        book
+        and hasattr(book, "sections")
+        and all(s.section_id != section_id for s in book.sections)
+    ):
+        book.sections.append(section)
+
+    return section
+
+
+def _ensure_subsection(
+    art_tag: Tag, subsections: dict[str, Subsection], section: Section | None
+) -> Subsection | None:
+    """Retrieve or create a subsection for the given article tag."""
+
+    if not section:
+        return None
+
+    # Locate the nearest subsection body containing the article.
+    sub_body = art_tag.find_parent("span", class_="S_SSEC_BDY")
+    if not sub_body:
+        return None
+
+    # Use the subsection body identifier to deduplicate subsections.
+    sub_id = sub_body.get("id", "")
+    subsection = subsections.get(sub_id)
+
+    if subsection is None:
+        # Determine the subsection label and description.
+        # Use preceding siblings to extract metadata.
+        title_tag = sub_body.find_previous("span", class_="S_SSEC_TTL")
+        desc_tag = sub_body.find_previous("span", class_="S_SSEC_DEN")
+
+        # Textual information for the subsection.
+        sub_title = title_tag.get_text(strip=True) if title_tag else ""
+        description = desc_tag.get_text(strip=True) if desc_tag else None
+
+        # Create and store the new subsection instance.
+        subsection = Subsection(
+            subsection_id=sub_id,
+            title=sub_title,
+            description=description,
+        )
+        subsections[sub_id] = subsection
+
+    # Attach the subsection to the parent section.
+    if all(s.subsection_id != sub_id for s in section.subsections):
+        section.subsections.append(subsection)
+
+    return subsection
+
+
 def parse_html(html: str, ver_id: str) -> dict[str, object]:
     """Parse HTML content into structured data.
 
@@ -503,6 +643,8 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
     books: dict[str, Book] = {}
     titles: dict[str, Title] = {}
     chapters: dict[str, Chapter] = {}
+    sections: dict[str, Section] = {}
+    subsections: dict[str, Subsection] = {}
 
     for art_tag in soup.find_all("span", class_="S_ART"):
         # Parse the article tag into a dataclass.
@@ -514,9 +656,15 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
         book = _ensure_book(art_tag, books)
         title_obj = _ensure_title(art_tag, titles, book)
         chapter = _ensure_chapter(art_tag, chapters, title_obj, book)
+        section = _ensure_section(art_tag, sections, chapter, title_obj, book)
+        subsection = _ensure_subsection(art_tag, subsections, section)
 
         # Attach the article to the deepest container available.
-        if chapter:
+        if subsection:
+            subsection.articles.append(article)
+        elif section:
+            section.articles.append(article)
+        elif chapter:
             chapter.articles.append(article)
         elif title_obj:
             title_obj.articles.append(article)
