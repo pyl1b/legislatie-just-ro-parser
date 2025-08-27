@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import yaml  # type: ignore[import-untyped]
@@ -81,3 +82,38 @@ def test_convert_writes_xlsx(tmp_path: Path) -> None:
     assert set(workbook.sheetnames) == {"document", "articles"}
     doc_sheet = workbook["document"]
     assert doc_sheet.cell(row=2, column=1).value == "123"
+
+
+def test_convert_writes_xlsx_with_nested_values(tmp_path: Path) -> None:
+    """Ensure XLSX output serializes nested data structures."""
+
+    sample: dict[str, Any] = {
+        "document": {
+            "ver_id": "123",
+            "versions": [{"ver_id": "2", "date": "2022-01-01"}],
+        },
+        "articles": [],
+    }
+    out_file = tmp_path / "out.xlsx"
+
+    with patch("leropa.parser.fetch_document", return_value=sample):
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.cli,
+            [
+                "convert",
+                "123",
+                "--format",
+                "xlsx",
+                "--output",
+                str(out_file),
+            ],
+        )
+
+    assert result.exit_code == 0
+    workbook = load_workbook(out_file)
+    doc_sheet = workbook["document"]
+
+    # The versions list is stored as a JSON string in the second column.
+    versions_cell = doc_sheet.cell(row=2, column=2).value
+    assert json.loads(versions_cell) == sample["document"]["versions"]

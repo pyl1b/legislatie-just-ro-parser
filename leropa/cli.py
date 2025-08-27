@@ -138,9 +138,29 @@ def convert(
                     sheet.append(row)
             elif isinstance(value, dict):
                 sheet.append(list(value.keys()))
-                sheet.append([value.get(k) for k in value.keys()])
+
+                # Build a row with the dictionary values while serializing
+                # any lists or dictionaries to JSON so that Excel can
+                # properly store them as strings instead of complex types.
+                row = []
+                for k in value.keys():
+                    cell_value = value.get(k)
+
+                    if isinstance(cell_value, (list, dict)):
+                        cell_value = json.dumps(cell_value, ensure_ascii=False)
+
+                    row.append(cell_value)
+
+                sheet.append(row)
             else:
                 sheet.append(["value"])
-                sheet.append([value])
+
+                # Serialize any non-tabular value so that complex types are
+                # safely stored as JSON strings in Excel.
+                cell_value = value
+                if isinstance(cell_value, (list, dict)):
+                    cell_value = json.dumps(cell_value, ensure_ascii=False)
+
+                sheet.append([cell_value])
 
         workbook.save(output_path)
