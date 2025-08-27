@@ -1,18 +1,22 @@
 # legislatie-just-ro-parser
 
-The purpose of this library is to read legal documents from
-[legislatie.just.ro](https://legislatie.just.ro/) and convert them into
-structured data.
+`leropa` reads legal documents from
+[legislatie.just.ro](https://legislatie.just.ro/) and converts them into
+structured data. It fetches documents on demand, caches the retrieved HTML and
+parses it with BeautifulSoup into a hierarchy that includes metadata,
+books, titles, chapters, sections, articles, paragraphs and notes, along with
+the document's consolidation history.
 
-The user provides the unique ID the legal document version that needs to be
-converted. The library look into the local cache to see if that document
-has already been downloaded and, if not, it retrieves the html source for it
-using the requests library.
+The resulting structure can be exported as JSON, YAML or XLSX. Spreadsheet
+exports place each type of data on its own worksheet.
 
-The content is then stripped of css and js, and what is left is parsed into
-the structure defined below.
+## Installation
 
-The output can be saved into json or yaml formats.
+Requires Python 3.11 or newer.
+
+```bash
+pip install leropa
+```
 
 ## Command Line Usage
 
@@ -24,8 +28,28 @@ as JSON:
 leropa convert 123456
 ```
 
-The command caches downloaded HTML in the user home directory to speed up
-subsequent conversions.
+Downloaded HTML is cached in the user home directory to speed up subsequent
+conversions. Use `--cache-dir` to specify a different location.
+
+You can change the output format or write the result to a file:
+
+```bash
+leropa convert 123456 --format yaml --output data.yaml
+leropa convert 123456 --format xlsx --output sheets.xlsx
+```
+
+When `--output` points to a directory the file name is derived from the document
+identifier.
+
+## Library Usage
+
+The parser can also be used programmatically:
+
+```python
+from leropa import parser
+
+doc = parser.fetch_document("123456")
+```
 
 ## Output Structure
 
