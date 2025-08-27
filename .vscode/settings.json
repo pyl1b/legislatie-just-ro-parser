@@ -1,8 +1,15 @@
 {
     "cSpell.words": [
+        "beautifulsoup",
+        "dotenv",
         "istoric",
         "legislatie",
         "leropa",
+        "openpyxl",
+        "pycodestyle",
+        "pyflakes",
+        "pyyaml",
+        "setuptools",
         "sheetnames"
     ],
     "python.formatting.provider": "none",
