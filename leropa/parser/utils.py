@@ -118,6 +118,13 @@ def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: A
             # For numbered paragraphs wrapped in S_ALN,
             # extract body text and label.
             notes_in_par: NoteList = []
+
+            # Collect line items before extracting paragraph text so that
+            # they don't end up in the paragraph body.
+            line_items = child.find_all("span", class_="S_LIN")
+            for item in line_items:
+                item.extract()
+
             if "S_ALN" in classes:
                 bdy = child.find("span", class_="S_ALN_BDY")
                 if bdy:
@@ -153,6 +160,26 @@ def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: A
                 notes=notes_in_par,
             )
             paragraphs.append(current_par)
+
+            # Convert each extracted line item into a subparagraph of the
+            # current paragraph.
+            for item in line_items:
+                label_tag = item.find("span", class_="S_LIN_TTL")
+                bdy = item.find("span", class_="S_LIN_BDY")
+
+                # Preserve spaces between inline elements when extracting text.
+                sub_text = (
+                    _normalize_whitespace(bdy.get_text(" ", strip=True))
+                    if bdy
+                    else _normalize_whitespace(item.get_text(" ", strip=True))
+                )
+
+                sub_label = label_tag.get_text(strip=True) if label_tag else ""
+                sub_id = item.get("id", "")
+                current_par.subparagraphs.append(
+                    SubParagraph(sub_id=sub_id, label=sub_label, text=sub_text)
+                )
+
             continue
 
         if "S_LIT" in classes:
@@ -249,7 +276,9 @@ def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
     # Remove hidden short placeholders that render as ellipsis.
     # These spans contain only three dots ("...") and are not meant to be
     # part of the visible text content.
-    for short in body_tag.find_all("span", class_="S_LIT_SHORT"):
+    for short in body_tag.find_all(
+        "span", class_=["S_LIT_SHORT", "S_LIN_SHORT"]
+    ):
         short.decompose()
 
     # Extract paragraphs and associated notes.

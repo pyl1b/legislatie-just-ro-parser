@@ -177,6 +177,28 @@ SAMPLE_HTML_WITH_SHORT = """
 """
 
 
+SAMPLE_HTML_WITH_LINE_ITEMS = """
+<span class="S_ART" id="id_art_lin">
+    <span class="S_ART_TTL" id="id_art_lin_ttl">Articolul Lin</span>
+    <span class="S_ART_BDY" id="id_art_lin_bdy">
+        <span class="S_PAR" id="id_par_lin">
+            Termeni utilizați:
+            <span class="S_LIN" id="id_lin1">
+                <span class="S_LIN_TTL" id="id_lin1_ttl">– </span>
+                <span class="S_LIN_BDY" id="id_lin1_bdy">First item;</span>
+                <span class="S_LIN_SHORT" id="id_lin1_short"
+                      style="display: none"> ... </span>
+            </span>
+            <span class="S_LIN" id="id_lin2">
+                <span class="S_LIN_TTL" id="id_lin2_ttl">– </span>
+                <span class="S_LIN_BDY" id="id_lin2_bdy">Second item;</span>
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
 SAMPLE_HTML_WITH_HISTORY = """
 <html>
   <body>
@@ -324,6 +346,19 @@ def test_removes_short_span() -> None:
     paragraph = article["paragraphs"][0]
     assert paragraph["subparagraphs"][0]["text"] == "Subparagraph text."
     assert "..." not in article["full_text"]
+
+
+def test_line_items_become_subparagraphs() -> None:
+    """Convert line items into subparagraphs."""
+
+    doc = parser.parse_html(SAMPLE_HTML_WITH_LINE_ITEMS, "616")
+    article = doc["articles"][0]
+    paragraph = article["paragraphs"][0]
+    assert paragraph["text"] == "Termeni utilizați:"
+    assert len(paragraph["subparagraphs"]) == 2
+    first = paragraph["subparagraphs"][0]
+    assert first["label"] == "–"
+    assert first["text"] == "First item;"
 
 
 def test_version_history_extraction() -> None:
