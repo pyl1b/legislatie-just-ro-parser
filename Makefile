@@ -10,6 +10,7 @@ init-d:
 
 
 test:
+	mypy leropa tests
 	pytest
 
 
@@ -23,4 +24,3 @@ format:
 
 delint: format
 	ruff check --fix .
-
