@@ -53,43 +53,162 @@ doc = parser.fetch_document("123456")
 
 ## Output Structure
 
-The top level object for each document level version is a dictionary
-with the following keys:
+The parser returns a dictionary containing metadata and the document body:
 
 ```js
 {
-    "document": ...,
-    "articles": [
-        ...
-    ]
+    "document": ..., 
+    "books": [...],
+    "articles": [...]
 }
 ```
 
 ### The document
 
-The document object is a dictionary that stores general information about the
-document version from which the data was extracted:
+Stores general information about the document version:
 
 ```js
 {
     "source": "https://legislatie.just.ro/Public/DetaliiDocument/...",
     "ver_id": "...",
+    "title": "...",
+    "description": "...",
+    "keywords": "...",
+    "history": [
+        {"ver_id": "...", "date": "..."},
+        ...
+    ],
     "prev_ver": "...",
     "next_ver": "..."
 }
 ```
 
+### The book
+
+Groups titles, chapters, sections and articles:
+
+```js
+{
+    "book_id": "...",
+    "title": "...",
+    "description": "...",
+    "titles": [...],
+    "chapters": [...],
+    "sections": [...],
+    "articles": ["id_...", ...]
+}
+```
+
+### The title
+
+Groups chapters, sections and articles:
+
+```js
+{
+    "title_id": "...",
+    "title": "...",
+    "description": "...",
+    "chapters": [...],
+    "sections": [...],
+    "articles": ["id_...", ...]
+}
+```
+
+### The chapter
+
+Groups sections and articles:
+
+```js
+{
+    "chapter_id": "...",
+    "title": "...",
+    "description": "...",
+    "sections": [...],
+    "articles": ["id_...", ...]
+}
+```
+
+### The section
+
+Groups subsections and articles:
+
+```js
+{
+    "section_id": "...",
+    "title": "...",
+    "description": "...",
+    "subsections": [...],
+    "articles": ["id_...", ...]
+}
+```
+
+### The subsection
+
+Groups articles inside a section:
+
+```js
+{
+    "subsection_id": "...",
+    "title": "...",
+    "description": "...",
+    "articles": ["id_...", ...]
+}
+```
+
 ### The article
 
-Each article object is a dictionary with the following structure:
+Contains the full text and its components:
 
 ```js
 {
     "article_id": "...",
     "full_text": "...",
-    "paragraphs": [
-        {"par_id": "id_...", "text": "..."},
-        {"par_id": "id_...", "text": "..."},
-    ]
+    "paragraphs": [...],
+    "notes": [...]
+}
+```
+
+### The paragraph
+
+Represents an individual paragraph of an article:
+
+```js
+{
+    "par_id": "...",
+    "text": "...",
+    "label": "...",
+    "subparagraphs": [...],
+    "notes": [...]
+}
+```
+
+### The sub-paragraph
+
+Lettered or numbered sub-paragraph:
+
+```js
+{
+    "sub_id": "...",
+    "label": "...",
+    "text": "..."
+}
+```
+
+### The note
+
+Amendment note attached to an article or paragraph:
+
+```js
+{
+    "note_id": "...",
+    "text": "...",
+    "date": "...",
+    "subject": "...",
+    "law_number": "...",
+    "law_date": "...",
+    "monitor_number": "...",
+    "monitor_date": "...",
+    "replaced": "...",
+    "replacement": "..."
 }
 ```
