@@ -511,6 +511,11 @@ def _ensure_section(
 
     # Locate the nearest section body containing the article.
     section_body = art_tag.find_parent("span", class_="S_SEC_BDY")
+
+    # Sections can also be marked as points using S_PCT_BDY.
+    if not section_body:
+        section_body = art_tag.find_parent("span", class_="S_PCT_BDY")
+
     if not section_body:
         return None
 
@@ -519,13 +524,20 @@ def _ensure_section(
     section = sections.get(section_id)
 
     if section is None:
-        # Determine the section label and description from preceding siblings.
-        title_tag = section_body.find_previous("span", class_="S_SEC_TTL")
-        desc_tag = section_body.find_previous("span", class_="S_SEC_DEN")
+        # Determine section details based on the section type.
+        if "S_PCT_BDY" in section_body.get("class", []):
+            title_tag = section_body.find_previous("span", class_="S_PCT_TTL")
 
-        # Textual information for the section.
+            # Extract only the direct text, excluding nested article content.
+            desc_text = section_body.find(string=True, recursive=False)
+            description = desc_text.strip() if desc_text else None
+        else:
+            title_tag = section_body.find_previous("span", class_="S_SEC_TTL")
+            desc_tag = section_body.find_previous("span", class_="S_SEC_DEN")
+            description = desc_tag.get_text(strip=True) if desc_tag else None
+
+        # Textual information for the section title.
         sec_title = title_tag.get_text(strip=True) if title_tag else ""
-        description = desc_tag.get_text(strip=True) if desc_tag else None
 
         # Create and store the new section instance.
         section = Section(

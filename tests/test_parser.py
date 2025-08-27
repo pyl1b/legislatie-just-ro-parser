@@ -287,6 +287,25 @@ SAMPLE_HTML_SECTION_NO_BOOK = """
 """
 
 
+SAMPLE_HTML_WITH_PCT_SECTION = """
+<span class="S_CAP_TTL" id="id_chap_ttl">Capitolul II</span>
+<span class="S_CAP_BDY" id="id_chap_bdy">
+    <span class="S_PCT" id="id_pct">
+        <span class="S_PCT_TTL" id="id_pct_ttl">2.1.</span>
+        <span class="S_PCT_BDY" id="id_pct_bdy">
+            Cuprinsul cărții funciare
+            <span class="S_ART" id="id_art_pct">
+                <span class="S_ART_TTL" id="id_art_pct_ttl">Articolul 1</span>
+                <span class="S_ART_BDY" id="id_art_pct_bdy">
+                    <span class="S_PAR" id="id_par_pct">Text.</span>
+                </span>
+            </span>
+        </span>
+    </span>
+</span>
+"""
+
+
 def test_parse_html_extracts_articles() -> None:
     doc = parser.parse_html(SAMPLE_HTML, "123")
     assert doc["document"]["ver_id"] == "123"
@@ -485,3 +504,16 @@ def test_section_without_hierarchy() -> None:
     section = chapter["sections"][0]
     assert section["section_id"] == "id_sec_bdy"
     assert section["articles"][0] == "id_artB"
+
+
+def test_pct_section_parsing() -> None:
+    """Parse sections marked with S_PCT_BDY."""
+
+    doc = parser.parse_html(SAMPLE_HTML_WITH_PCT_SECTION, "664")
+    book = doc["books"][0]
+    chapter = book["chapters"][0]
+    section = chapter["sections"][0]
+    assert section["section_id"] == "id_pct_bdy"
+    assert section["title"] == "2.1."
+    assert section["description"] == "Cuprinsul cărții funciare"
+    assert section["articles"][0] == "id_art_pct"
