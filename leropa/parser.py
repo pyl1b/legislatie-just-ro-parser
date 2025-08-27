@@ -5,10 +5,10 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import List
+from typing import Any, List
 
-import requests
-from bs4 import BeautifulSoup, Tag
+import requests  # type: ignore[import-untyped]
+from bs4 import BeautifulSoup
 
 # Type aliases
 SubParagraphList = List["SubParagraph"]
@@ -306,16 +306,16 @@ def _parse_note_details(text: str) -> dict[str, str | None]:
     }
 
 
-def _note_from_tag(tag: Tag) -> Note:
+def _note_from_tag(tag: Any) -> Note:  # noqa: ANN401
     """Create a Note instance from the given HTML tag."""
 
-    note_id = tag.get("id", "")
+    note_id = str(tag.get("id", ""))
     text = _normalize_whitespace(tag.get_text(" ", strip=True))
     details = _parse_note_details(text)
     return Note(note_id=note_id, text=text, **details)
 
 
-def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
+def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: ANN401
     """Extract paragraph and note information from an article body tag."""
 
     paragraphs: ParagraphList = []
@@ -382,7 +382,7 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
             label_tag = child.find("span", class_="S_LIT_TTL")
             bdy = child.find("span", class_="S_LIT_BDY")
 
-            notes_in_par: NoteList = []
+            notes_in_par = []
             if bdy:
                 # Remove notes from the body and capture them when present.
                 for note in bdy.find_all("span", class_="S_PAR"):
@@ -451,7 +451,7 @@ def _get_paragraphs(body_tag: Tag) -> tuple[ParagraphList, NoteList]:
     return paragraphs, notes
 
 
-def _parse_article(art_tag: Tag) -> Article | None:
+def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
     """Create an article dataclass from the given tag.
 
     Args:
@@ -491,7 +491,7 @@ def _parse_article(art_tag: Tag) -> Article | None:
     )
 
 
-def _ensure_book(art_tag: Tag, books: dict[str, Book]) -> Book | None:
+def _ensure_book(art_tag: Any, books: dict[str, Book]) -> Book | None:  # noqa: ANN401
     """Retrieve or create a book for the given article tag."""
 
     # Locate the nearest book body containing the article.
@@ -519,7 +519,9 @@ def _ensure_book(art_tag: Tag, books: dict[str, Book]) -> Book | None:
 
 
 def _ensure_title(
-    art_tag: Tag, titles: dict[str, Title], book: Book | None
+    art_tag: Any,  # noqa: ANN401
+    titles: dict[str, Title],
+    book: Book | None,
 ) -> Title | None:
     """Retrieve or create a title for the given article tag."""
 
@@ -557,7 +559,7 @@ def _ensure_title(
 
 
 def _ensure_chapter(
-    art_tag: Tag,
+    art_tag: Any,  # noqa: ANN401
     chapters: dict[str, Chapter],
     title: Title | None,
     book: Book | None,
@@ -600,7 +602,7 @@ def _ensure_chapter(
 
 
 def _ensure_section(
-    art_tag: Tag,
+    art_tag: Any,  # noqa: ANN401
     sections: dict[str, Section],
     chapter: Chapter | None,
     title: Title | None,
@@ -654,7 +656,9 @@ def _ensure_section(
 
 
 def _ensure_subsection(
-    art_tag: Tag, subsections: dict[str, Subsection], section: Section | None
+    art_tag: Any,  # noqa: ANN401
+    subsections: dict[str, Subsection],
+    section: Section | None,
 ) -> Subsection | None:
     """Retrieve or create a subsection for the given article tag."""
 
@@ -695,7 +699,7 @@ def _ensure_subsection(
     return subsection
 
 
-def parse_html(html: str, ver_id: str) -> dict[str, object]:
+def parse_html(html: str, ver_id: str) -> dict[str, Any]:
     """Parse HTML content into structured data.
 
     Args:
@@ -709,9 +713,9 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
     soup = BeautifulSoup(html, "html.parser")
 
     # Extract document metadata from meta tags.
-    meta_title = soup.find("meta", attrs={"name": "title"})
-    description_tag = soup.find("meta", attrs={"name": "description"})
-    keywords_tag = soup.find("meta", attrs={"name": "keywords"})
+    meta_title: Any = soup.find("meta", attrs={"name": "title"})
+    description_tag: Any = soup.find("meta", attrs={"name": "description"})
+    keywords_tag: Any = soup.find("meta", attrs={"name": "keywords"})
 
     # Fall back to the HTML title when meta title is missing.
     title = (
@@ -727,7 +731,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, object]:
 
     # Collect historical versions from the consolidation list.
     history: HistoryList = []
-    history_div = soup.find("div", id="istoric_fa")
+    history_div: Any = soup.find("div", id="istoric_fa")
     if history_div:
         # Iterate through all links representing previous versions.
         for link in history_div.find_all("a"):
@@ -823,7 +827,7 @@ CACHE_DIR = Path.home() / ".leropa"
 
 def fetch_document(
     ver_id: str, cache_dir: Path | None = None
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """Fetch document HTML, using local cache when possible.
 
     Args:
