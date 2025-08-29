@@ -69,6 +69,7 @@ print(answer["text"])
 delete_by_article_id("article-77", collection="legal_articles")
 """
 
+import logging
 import os
 import subprocess
 import uuid
@@ -89,6 +90,9 @@ from qdrant_client.models import (
 from tqdm import tqdm  # type: ignore
 
 from leropa.json_utils import json_loads
+
+logger = logging.getLogger(__name__)
+
 
 # Optional re-ranker (CPU ok). If unavailable, pipeline still works.
 CrossEncoder: Any = None  # ensure bound for type checkers and runtime
@@ -290,7 +294,7 @@ def _iter_json_objects(
                 for obj in objs:
                     yield path, obj
             except Exception as e:
-                print(f"[WARN] Skipping {path}: {e}")
+                logger.exception(f"Skipping {path}: {e}")
 
 
 def _validate_article(
@@ -307,11 +311,11 @@ def _validate_article(
     """
     missing = [k for k in ("full_text", "article_id", "label") if k not in obj]
     if missing:
-        print(f"[WARN] {source}: missing keys {missing}; skipping.")
+        logger.warning(f"{source}: missing keys {missing}; skipping.")
         return None
     text = (obj.get("full_text") or "").strip()
     if not text:
-        print(f"[WARN] {source}: empty full_text; skipping.")
+        logger.warning(f"{source}: empty full_text; skipping.")
         return None
 
     # Normalize:
@@ -387,7 +391,7 @@ def start_qdrant_docker(
     port: int = 6333,
     volume: str = "qdrant_storage",
     image: str = "qdrant/qdrant:latest",
-) -> None:
+) -> bool:
     """Start a Qdrant Docker container if not already running.
 
     Args:
@@ -415,13 +419,10 @@ def start_qdrant_docker(
             ],
             check=False,
         )
-        print(f"[INFO] Qdrant requested on http://localhost:{port}")
-    except Exception as e:
-        print(f"[WARN] Could not start Qdrant via Docker automatically: {e}")
-        print(
-            "Run manually:\n  docker run --name qdrant -p 6333:6333 "
-            "-v qdrant_storage:/qdrant/storage qdrant/qdrant:latest"
-        )
+        return True
+    except Exception:
+        logger.exception("Failed to start Qdrant via Docker automatically")
+        return False
 
 
 def recreate_collection(
@@ -441,7 +442,6 @@ def recreate_collection(
         collection_name=collection,
         vectors_config=VectorParams(size=vector_size, distance=distance),
     )
-    print(f"[INFO] Collection '{collection}' ready at {QDRANT_URL}.")
 
 
 def ingest_folder(
@@ -450,7 +450,7 @@ def ingest_folder(
     batch_size: int = 32,
     chunk_tokens: int = MAX_TOKENS_PER_CHUNK,
     overlap_tokens: int = OVERLAP_TOKENS,
-) -> None:
+) -> int:
     """Ingest articles from ``root`` into Qdrant.
 
     Accepts JSON, JSONL or YAML files containing either individual article
@@ -506,7 +506,7 @@ def ingest_folder(
         client.upsert(collection_name=collection, points=buf_points)
         total += len(buf_points)
 
-    print(f"[INFO] Ingested {total} chunks into '{collection}'.")
+    return total
 
 
 def search(
@@ -669,7 +669,4 @@ def delete_by_article_id(article_id: str, collection: str) -> int:
             scroll_filter=f,
             offset=next_page,
         )
-    print(
-        f"[INFO] Deleted ~{total_deleted} points for article_id={article_id}"
-    )
     return total_deleted
