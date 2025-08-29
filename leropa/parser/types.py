@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .annex import Annex  # noqa: F401
     from .article import Article  # noqa: F401
     from .book import Book  # noqa: F401
     from .chapter import Chapter  # noqa: F401
@@ -26,3 +27,4 @@ ChapterList = list["Chapter"]
 TitleList = list["Title"]
 BookList = list["Book"]
 SectionList = list["Section"]
+AnnexList = list["Annex"]

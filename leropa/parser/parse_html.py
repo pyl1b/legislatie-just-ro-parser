@@ -8,10 +8,12 @@ from typing import Any
 from attrs import asdict
 from bs4 import BeautifulSoup
 
+from .annex import Annex
 from .book import Book
 from .chapter import Chapter
 from .document_info import DocumentInfo
 from .history_entry import HistoryEntry
+from .note import Note
 from .section import Section
 from .title import Title
 from .types import ArticleDataList, HistoryList
@@ -21,6 +23,8 @@ from .utils import (
     _ensure_section,
     _ensure_subsection,
     _ensure_title,
+    _normalize_whitespace,
+    _note_from_tag,
     _parse_article,
 )
 
@@ -123,6 +127,9 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
     # Store all parsed articles for backward compatibility.
     parsed_articles: ArticleDataList = []
 
+    # Collect annexes attached at the end of the document.
+    parsed_annexes: list[Annex] = []
+
     # Temporary registries for hierarchical structures to avoid duplicates.
     books: dict[str, Book] = {}
     titles: dict[str, Title] = {}
@@ -221,6 +228,46 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
 
         parsed_articles.append(article)
 
+    # Parse annexes that follow the main body.
+    for ttl_tag in soup.find_all("span", class_="S_ANX_TTL"):
+        annex_id_raw = ttl_tag.get("id", "")
+
+        # Determine the base identifier shared by title and body.
+        annex_id = (
+            annex_id_raw[:-4]
+            if annex_id_raw.endswith("_ttl")
+            else annex_id_raw
+        )
+
+        title_text = _normalize_whitespace(ttl_tag.get_text(" ", strip=True))
+        bdy_tag = soup.find("span", id=f"{annex_id}_bdy")
+
+        notes: list[Note] = []
+        body_text = ""
+        if bdy_tag:
+            for note_tag in bdy_tag.find_all("span", class_="S_PAR"):
+                note_text = _normalize_whitespace(
+                    note_tag.get_text(" ", strip=True)
+                )
+
+                # Treat paragraphs starting with "(la" as amendment notes.
+                if note_text.startswith("(la"):
+                    notes.append(_note_from_tag(note_tag))
+                    note_tag.extract()
+
+            body_text = _normalize_whitespace(
+                bdy_tag.get_text(" ", strip=True)
+            )
+
+        parsed_annexes.append(
+            Annex(
+                annex_id=annex_id,
+                title=title_text,
+                text=body_text,
+                notes=notes,
+            )
+        )
+
     source = f"https://legislatie.just.ro/Public/DetaliiDocument/{ver_id}"
 
     # Store metadata and history in the document info.
@@ -238,4 +285,5 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
         "document": asdict(document),
         "articles": [asdict(a) for a in parsed_articles],
         "books": [asdict(b) for b in books.values()],
+        "annexes": [asdict(a) for a in parsed_annexes],
     }

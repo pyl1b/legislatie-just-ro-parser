@@ -199,6 +199,18 @@ SAMPLE_HTML_WITH_LINE_ITEMS = """
 """
 
 
+SAMPLE_HTML_WITH_ANNEX = """
+<span class="S_ANX_TTL" id="id_anx1_ttl">Anexa nr. 1</span>
+<span class="S_ANX_BDY" id="id_anx1_bdy">
+    <span class="S_PAR" id="id_par_annex">Annex content.</span>
+    <span class="S_PAR" id="id_par_annex_note">
+        (la 01-01-2020, Anexa nr. 1 a fost modificată de art. I din LEGEA
+        nr. 1/2020.)
+    </span>
+</span>
+"""
+
+
 SAMPLE_HTML_LIT_ITEMS_IN_PARAGRAPH = """
 <span class="S_ART" id="id_art_lit_par">
     <span class="S_ART_TTL" id="id_art_lit_par_ttl">Articolul LitPar</span>
@@ -471,6 +483,21 @@ def test_line_items_become_subparagraphs() -> None:
     assert (
         article["full_text"]
         == "Termeni utilizați: – First item; – Second item;"
+    )
+
+
+def test_parse_annex() -> None:
+    """Extract annexes along with their notes."""
+
+    doc = parser.parse_html(SAMPLE_HTML_WITH_ANNEX, "700")
+    annexes = doc["annexes"]
+    assert len(annexes) == 1
+    annex = annexes[0]
+    assert annex["annex_id"] == "id_anx1"
+    assert annex["title"] == "Anexa nr. 1"
+    assert annex["text"] == "Annex content."
+    assert annex["notes"][0]["text"].startswith(
+        "(la 01-01-2020, Anexa nr. 1 a fost modificată"
     )
 
 
