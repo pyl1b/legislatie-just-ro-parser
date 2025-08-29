@@ -91,9 +91,6 @@ from tqdm import tqdm  # type: ignore
 
 from leropa.json_utils import json_loads
 
-logger = logging.getLogger(__name__)
-
-
 # Optional re-ranker (CPU ok). If unavailable, pipeline still works.
 CrossEncoder: Any = None  # ensure bound for type checkers and runtime
 try:
@@ -103,8 +100,10 @@ try:
 except Exception:
     _HAS_RERANKER = False
 
+logger = logging.getLogger(__name__)
+
 # -----------------------------
-# Defaults (change if you like)
+# Defaults.
 # -----------------------------
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 OLLAMA_EMBED_URL = os.environ.get(
@@ -118,7 +117,7 @@ EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")  # 768 dims
 EMBED_DIMS = int(os.environ.get("EMBED_DIMS", "768"))
 GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.1:8b")
 
-# If your articles are long, you may wish to sub-chunk. Set to 0 to disable.
+# If articles are long, you may wish to sub-chunk. Set to 0 to disable.
 MAX_TOKENS_PER_CHUNK = int(os.environ.get("MAX_TOKENS_PER_CHUNK", "1000"))
 OVERLAP_TOKENS = int(os.environ.get("OVERLAP_TOKENS", "200"))
 
@@ -140,19 +139,6 @@ except Exception:
 # -----------------------------
 # Helpers
 # -----------------------------
-def _token_len(text: str) -> int:
-    """Return the number of tokens in ``text``.
-
-    Args:
-        text: Text to measure.
-
-    Returns:
-        Count of tokens according to the configured encoder.
-    """
-    if not _ENC:
-        # fallback heuristic
-        return max(1, len(text.split()))
-    return len(_ENC.encode(text))
 
 
 def _split_into_token_chunks(
@@ -375,6 +361,7 @@ def _ollama_chat(system: str, user: str, stream: bool = False) -> str:
             # Ollama streams json lines like:
             #     {"message":{"content":"..."}, "done":false}
             j = json_loads(line.decode("utf-8"))
+            assert isinstance(j, dict), f"Expected dict, got {type(j)}"
             msg = j.get("message", {}).get("content")
             if msg:
                 out.append(msg)

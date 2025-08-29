@@ -1,6 +1,5 @@
 """Utilities to export legal articles to Markdown files."""
 
-import argparse
 import datetime
 import glob
 import hashlib
@@ -301,69 +300,3 @@ def export_folder(
             print(f"[warn] {f}: {e}")
 
     return num_articles, num_files
-
-
-# ---------- CLI ----------
-
-
-def main() -> None:
-    """CLI entry point."""
-
-    ap = argparse.ArgumentParser(
-        description=(
-            "Export legal JSON articles to chunked Markdown with YAML "
-            "front-matter."
-        )
-    )
-    ap.add_argument("input_dir", help="Folder with .json/.jsonl files")
-    ap.add_argument("output_dir", help="Folder to write .md files into")
-    ap.add_argument(
-        "--max-tokens",
-        type=int,
-        default=1000,
-        help="Tokens per chunk (0 = no chunking)",
-    )
-    ap.add_argument(
-        "--overlap",
-        type=int,
-        default=200,
-        help="Overlap tokens between chunks",
-    )
-    ap.add_argument(
-        "--ext",
-        default=".md",
-        choices=[".md", ".txt"],
-        help="Output file extension",
-    )
-    ap.add_argument(
-        "--title-template",
-        default="Article {label} (ID: {article_id})",
-        help="Title format",
-    )
-    ap.add_argument(
-        "--body-heading",
-        default="TEXT",
-        help="Body heading shown before the text",
-    )
-    args = ap.parse_args()
-
-    print(f"[info] token-aware chunking: {'on' if _ENC else 'word-based'}")
-
-    arts, files = export_folder(
-        args.input_dir,
-        args.output_dir,
-        max_tokens=args.max_tokens,
-        overlap_tokens=args.overlap,
-        title_template=args.title_template,
-        body_heading=args.body_heading,
-        ext=args.ext,
-    )
-
-    print(
-        f"[done] exported {arts} articles into {files} "
-        f"files @ {args.output_dir}"
-    )
-
-
-if __name__ == "__main__":
-    main()

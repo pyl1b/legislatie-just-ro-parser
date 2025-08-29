@@ -72,6 +72,163 @@
       "windows": {
         "python": "${workspaceFolder}\\venv\\Scripts\\python.exe"
       }
+    },
+
+
+    {
+      "name": "RAG • start-qdrant",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "start-qdrant",
+        "--name",
+        "${input:qdrantName}",
+        "--port",
+        "${input:qdrantPort}",
+        "--volume",
+        "${input:qdrantVolume}",
+        "--image",
+        "${input:qdrantImage}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {
+        "QDRANT_URL": "http://localhost:${input:qdrantPort}",
+        "OLLAMA_EMBED_URL": "http://localhost:11434/api/embeddings",
+        "OLLAMA_CHAT_URL": "http://localhost:11434/api/chat",
+        "EMBED_MODEL": "nomic-embed-text",
+        "EMBED_DIMS": "768",
+        "GEN_MODEL": "llama3.1:8b",
+        "MAX_TOKENS_PER_CHUNK": "1000",
+        "OVERLAP_TOKENS": "200",
+        "RERANKER_MODEL": "BAAI/bge-reranker-base",
+        "TOP_K_RETRIEVE": "24",
+        "TOP_K_CONTEXT": "8"
+      },
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "RAG • recreate collection",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "--collection",
+        "${input:collection}",
+        "recreate",
+        "--dims",
+        "${input:embedDims}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "RAG • ingest folder",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "--collection",
+        "${input:collection}",
+        "ingest",
+        "${input:ingestFolder}",
+        "--batch",
+        "${input:batchSize}",
+        "--chunk",
+        "${input:chunkTokens}",
+        "--overlap",
+        "${input:overlapTokens}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "RAG • search",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "--collection",
+        "${input:collection}",
+        "search",
+        "${input:searchQuery}",
+        "--topk",
+        "${input:topK}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "RAG • ask (with reranker)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "--collection",
+        "${input:collection}",
+        "ask",
+        "${input:question}",
+        "--topk",
+        "${input:topK}",
+        "--finalk",
+        "${input:finalK}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "RAG • ask (no reranker)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "--collection",
+        "${input:collection}",
+        "ask",
+        "${input:question}",
+        "--topk",
+        "${input:topK}",
+        "--finalk",
+        "${input:finalK}",
+        "--no-rerank"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "RAG • delete by article_id",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "rag",
+        "--collection",
+        "${input:collection}",
+        "delete",
+        "${input:articleId}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
     }
   ],
   "inputs": [
@@ -79,6 +236,96 @@
       "id": "verId",
       "type": "promptString",
       "description": "Document version ID (ver_id) to convert"
+    },
+    {
+      "id": "collection",
+      "type": "promptString",
+      "description": "Qdrant collection name",
+      "default": "legal_articles"
+    },
+    {
+      "id": "embedDims",
+      "type": "promptString",
+      "description": "Embedding vector size (EMBED_DIMS)",
+      "default": "768"
+    },
+    {
+      "id": "ingestFolder",
+      "type": "promptString",
+      "description": "Folder with JSON/JSONL/YAML files to ingest",
+      "default": "${workspaceFolder}/playground"
+    },
+    {
+      "id": "batchSize",
+      "type": "promptString",
+      "description": "Batch size for uploads",
+      "default": "32"
+    },
+    {
+      "id": "chunkTokens",
+      "type": "promptString",
+      "description": "Tokens per chunk (0 disables chunking)",
+      "default": "1000"
+    },
+    {
+      "id": "overlapTokens",
+      "type": "promptString",
+      "description": "Token overlap between chunks",
+      "default": "200"
+    },
+    {
+      "id": "searchQuery",
+      "type": "promptString",
+      "description": "Semantic search query",
+      "default": "What are the obligations for data controllers?"
+    },
+    {
+      "id": "topK",
+      "type": "promptString",
+      "description": "Number of results to retrieve",
+      "default": "24"
+    },
+    {
+      "id": "question",
+      "type": "promptString",
+      "description": "Question to ask the model",
+      "default": "Summarize remedies available under article 77."
+    },
+    {
+      "id": "finalK",
+      "type": "promptString",
+      "description": "Number of documents to include in the final context",
+      "default": "8"
+    },
+    {
+      "id": "articleId",
+      "type": "promptString",
+      "description": "Article ID to delete",
+      "default": "article-77"
+    },
+    {
+      "id": "qdrantName",
+      "type": "promptString",
+      "description": "Docker container name for Qdrant",
+      "default": "qdrant"
+    },
+    {
+      "id": "qdrantPort",
+      "type": "promptString",
+      "description": "Qdrant port to expose",
+      "default": "6333"
+    },
+    {
+      "id": "qdrantVolume",
+      "type": "promptString",
+      "description": "Docker volume for Qdrant persistent storage",
+      "default": "qdrant_storage"
+    },
+    {
+      "id": "qdrantImage",
+      "type": "promptString",
+      "description": "Docker image to run",
+      "default": "qdrant/qdrant:latest"
     }
   ]
 }
