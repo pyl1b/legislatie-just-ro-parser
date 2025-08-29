@@ -168,8 +168,9 @@ def _import_llm_module(module: str) -> ModuleType:
         if click.confirm("Install them now?", default=False):
             subprocess.run(
                 [sys.executable, "-m", "pip", "install", "-e", ".[llm]"],
-                check=False,
+                check=True,
             )
+            return _import_llm_module(module)
 
         # Abort execution with a clear message.
         raise click.ClickException("Missing LLM dependencies") from exc

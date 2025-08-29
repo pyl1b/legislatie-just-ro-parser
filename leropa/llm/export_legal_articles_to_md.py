@@ -10,6 +10,8 @@ import re
 import uuid
 from typing import Any, Dict, List, Tuple
 
+import yaml
+
 # Try to use orjson if available for speed.
 try:
     import orjson  # type: ignore[import-not-found]
@@ -50,15 +52,18 @@ def sha1_text(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
 
 
-def _json_loads(data: bytes) -> object:
+def _json_loads(data: bytes) -> Dict[str, Any]:
     """Load JSON bytes using orjson when available."""
 
     # Use orjson if available, otherwise fall back to json.
     if orjson is not None:
-        return orjson.loads(data)
+        result = orjson.loads(data)
+    else:
+        # Decode bytes to string for the stdlib json module.
+        result = json.loads(data.decode())
 
-    # Decode bytes to string for the stdlib json module.
-    return json.loads(data.decode())
+    assert isinstance(result, dict)
+    return result
 
 
 def read_any_json(path: str) -> List[Dict[str, Any]]:
@@ -227,14 +232,13 @@ def export_folder(
                     }
 
                     # YAML front-matter.
-                    yaml = (
-                        "---\n"
-                        + "\n".join(
-                            f"{k}: {str(v).replace(':', ': ')}"
-                            for k, v in meta.items()
-                        )
-                        + "\n---\n"
+                    yaml_data = yaml.safe_dump(
+                        meta,
+                        sort_keys=False,
+                        allow_unicode=True,
+                        default_flow_style=False,
                     )
+                    yaml_front_matter = f"---\n{yaml_data}---\n"
 
                     # Body as Markdown with a clear heading.
                     body = (
@@ -247,7 +251,7 @@ def export_folder(
                         f"{chunk}\n"
                     )
 
-                    content = yaml + "\n" + body
+                    content = yaml_front_matter + "\n" + body
 
                     fname = f"{base}__chunk{chunk_idx:03d}{ext}"
                     out_p = os.path.join(output_dir, fname)
