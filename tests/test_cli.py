@@ -1,13 +1,16 @@
 """Tests for the command line interface."""
 
 try:
-    import orjson as json
+    import orjson as json  # type: ignore[import-not-found]
 except ImportError:
     import json
 
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
+
+import importlib
+from types import SimpleNamespace
 
 import yaml  # type: ignore[import-untyped]
 from click.testing import CliRunner
@@ -314,3 +317,102 @@ def test_convert_wraps_long_and_list_values(tmp_path: Path) -> None:
     ].width
     assert full_text_width == 100
     assert article_id_width == 12
+
+
+def test_export_md_requires_llm_deps() -> None:
+    """Ensure missing LLM deps are reported to the user."""
+
+    runner = CliRunner()
+    real_import = importlib.import_module
+
+    def fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name.startswith("leropa.llm"):
+            raise ModuleNotFoundError
+        return real_import(name, *args, **kwargs)
+
+    with (
+        patch("leropa.cli.importlib.import_module", side_effect=fake_import),
+        patch("leropa.cli.click.confirm", return_value=False),
+    ):
+        result = runner.invoke(cli.cli, ["export-md", "in", "out"])
+
+    assert result.exit_code != 0
+    assert "pip install -e .[llm]" in result.output
+
+
+def test_export_md_invokes_module() -> None:
+    """Ensure export command calls the underlying module."""
+
+    called: dict[str, Any] = {}
+
+    def fake_export(
+        input_dir: str,
+        output_dir: str,
+        max_tokens: int,
+        overlap_tokens: int,
+        title_template: str,
+        body_heading: str,
+        ext: str,
+    ) -> tuple[int, int]:
+        called.update(
+            {
+                "input_dir": input_dir,
+                "output_dir": output_dir,
+                "max_tokens": max_tokens,
+                "overlap_tokens": overlap_tokens,
+                "title_template": title_template,
+                "body_heading": body_heading,
+                "ext": ext,
+            }
+        )
+        return 1, 1
+
+    mod = SimpleNamespace(export_folder=fake_export)
+    runner = CliRunner()
+    with patch("leropa.cli.importlib.import_module", return_value=mod):
+        result = runner.invoke(
+            cli.cli,
+            [
+                "export-md",
+                "in_dir",
+                "out_dir",
+                "--max-tokens",
+                "10",
+                "--overlap",
+                "5",
+                "--ext",
+                ".txt",
+                "--title-template",
+                "T",
+                "--body-heading",
+                "H",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert called["input_dir"] == "in_dir"
+    assert called["output_dir"] == "out_dir"
+    assert called["max_tokens"] == 10
+    assert called["overlap_tokens"] == 5
+    assert called["ext"] == ".txt"
+    assert called["title_template"] == "T"
+    assert called["body_heading"] == "H"
+
+
+def test_rag_recreate_invokes_module() -> None:
+    """Ensure rag recreate calls into the RAG module."""
+
+    called: dict[str, Any] = {}
+
+    def fake_recreate(collection: str, vector_size: int) -> None:
+        called["collection"] = collection
+        called["vector_size"] = vector_size
+
+    mod = SimpleNamespace(recreate_collection=fake_recreate)
+    runner = CliRunner()
+    with patch("leropa.cli.importlib.import_module", return_value=mod):
+        result = runner.invoke(cli.cli, ["rag", "recreate", "--dims", "10"])
+
+    assert result.exit_code == 0
+    assert called["collection"] == "legal_articles"
+    assert called["vector_size"] == 10

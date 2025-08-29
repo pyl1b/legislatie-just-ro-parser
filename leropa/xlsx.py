@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 try:
-    import orjson as json
+    import orjson as json  # type: ignore[import-not-found]
 except ImportError:
     import json
 
