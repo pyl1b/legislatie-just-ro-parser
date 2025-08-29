@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-try:
-    import orjson as json  # type: ignore[import-not-found]
-except ImportError:
-    import json
-
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4
@@ -18,6 +13,8 @@ from openpyxl.worksheet.table import (  # type: ignore[import-untyped]
     Table,
     TableStyleInfo,
 )
+
+from leropa.json_utils import json_dumps
 
 Sheets = Dict[str, List[Dict[str, Any]]]
 
@@ -354,7 +351,7 @@ def write_workbook(doc: Dict[str, Any], path: Path) -> None:
                 if isinstance(cell_value, (list, dict)):
                     wrap_columns.add(idx)
                     list_columns.add(idx)
-                    cell_value = json.dumps(cell_value, ensure_ascii=False)
+                    cell_value = json_dumps(cell_value)
 
                 # Mark columns containing long text for wrapping and custom
                 # width.
