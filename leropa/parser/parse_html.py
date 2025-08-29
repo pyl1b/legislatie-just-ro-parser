@@ -33,7 +33,14 @@ DEFAULT_CHAPTER_ID = "default_chapter"
 
 
 def _get_default_book(books: dict[str, Book]) -> Book:
-    """Return a placeholder book when the source lacks one."""
+    """Return a placeholder book when the source lacks one.
+
+    Args:
+        books: Mapping of existing books keyed by identifier.
+
+    Returns:
+        Placeholder book instance.
+    """
 
     # Retrieve the existing placeholder book if present.
     book = books.get(DEFAULT_BOOK_ID)
@@ -46,7 +53,14 @@ def _get_default_book(books: dict[str, Book]) -> Book:
 
 
 def _get_default_chapter(chapters: dict[str, Chapter]) -> Chapter:
-    """Return a placeholder chapter when the source lacks one."""
+    """Return a placeholder chapter when the source lacks one.
+
+    Args:
+        chapters: Mapping of existing chapters keyed by identifier.
+
+    Returns:
+        Placeholder chapter instance.
+    """
 
     # Retrieve the existing placeholder chapter if present.
     chapter = chapters.get(DEFAULT_CHAPTER_ID)

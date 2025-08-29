@@ -74,7 +74,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
     article_parent: Dict[str, str] = {}
 
     def process_book(book: Dict[str, Any], parent_id: str) -> str:
-        """Process a book structure and its descendants."""
+        """Process a book structure and its descendants.
+
+        Args:
+            book: Mapping describing the book structure.
+            parent_id: Identifier of the parent container.
+
+        Returns:
+            Generated identifier for the book.
+        """
 
         book_id = _ensure_id(book, "book")
         book["parent_id"] = parent_id
@@ -105,7 +113,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
         return book_id
 
     def process_title(title: Dict[str, Any], parent_id: str) -> str:
-        """Process a title structure and its descendants."""
+        """Process a title structure and its descendants.
+
+        Args:
+            title: Mapping describing the title structure.
+            parent_id: Identifier of the parent container.
+
+        Returns:
+            Generated identifier for the title.
+        """
 
         title_id = _ensure_id(title, "title")
         title["parent_id"] = parent_id
@@ -130,7 +146,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
         return title_id
 
     def process_chapter(chapter: Dict[str, Any], parent_id: str) -> str:
-        """Process a chapter structure and its descendants."""
+        """Process a chapter structure and its descendants.
+
+        Args:
+            chapter: Mapping describing the chapter structure.
+            parent_id: Identifier of the parent container.
+
+        Returns:
+            Generated identifier for the chapter.
+        """
 
         chapter_id = _ensure_id(chapter, "chapter")
         chapter["parent_id"] = parent_id
@@ -150,7 +174,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
         return chapter_id
 
     def process_section(section: Dict[str, Any], parent_id: str) -> str:
-        """Process a section structure and its descendants."""
+        """Process a section structure and its descendants.
+
+        Args:
+            section: Mapping describing the section structure.
+            parent_id: Identifier of the parent container.
+
+        Returns:
+            Generated identifier for the section.
+        """
 
         section_id = _ensure_id(section, "section")
         section["parent_id"] = parent_id
@@ -170,7 +202,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
         return section_id
 
     def process_paragraph(paragraph: Dict[str, Any], parent_id: str) -> str:
-        """Process a paragraph and its substructures."""
+        """Process a paragraph and its substructures.
+
+        Args:
+            paragraph: Mapping describing the paragraph structure.
+            parent_id: Identifier of the parent article.
+
+        Returns:
+            Generated identifier for the paragraph.
+        """
 
         par_id = _ensure_id(paragraph, "par")
         paragraph["parent_id"] = parent_id
@@ -192,7 +232,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
     def process_subparagraph(
         subparagraph: Dict[str, Any], parent_id: str
     ) -> str:
-        """Process a sub-paragraph."""
+        """Process a sub-paragraph.
+
+        Args:
+            subparagraph: Mapping describing the sub-paragraph structure.
+            parent_id: Identifier of the parent paragraph.
+
+        Returns:
+            Generated identifier for the sub-paragraph.
+        """
 
         sub_id = _ensure_id(subparagraph, "sub")
         subparagraph["parent_id"] = parent_id
@@ -201,7 +249,15 @@ def _flatten(doc: Dict[str, Any]) -> Sheets:
         return sub_id
 
     def process_note(note: Dict[str, Any], parent_id: str) -> str:
-        """Process a note attached to an article or paragraph."""
+        """Process a note attached to an article or paragraph.
+
+        Args:
+            note: Mapping describing the note.
+            parent_id: Identifier of the parent element.
+
+        Returns:
+            Generated identifier for the note.
+        """
 
         note_id = _ensure_id(note, "note")
         note["parent_id"] = parent_id
