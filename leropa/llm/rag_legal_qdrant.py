@@ -70,17 +70,17 @@ delete_by_article_id("article-77", collection="legal_articles")
 """
 
 import os
+import subprocess
+import uuid
+from typing import Any, Dict, Generator, List, Optional, Tuple
 
 try:
     import orjson as json
 except ImportError:
     import json  # type: ignore
 
-import subprocess
-import uuid
-from typing import Any, Dict, Generator, List, Optional, Tuple
-
 import requests
+import yaml  # type: ignore[import]
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -199,6 +199,28 @@ def _is_jsonl(path: str) -> bool:
     return path.lower().endswith(".jsonl")
 
 
+def _extract_articles(data: object) -> List[Dict[str, Any]]:
+    """Extract article dictionaries from loaded content.
+
+    Args:
+        data: Parsed file content.
+
+    Returns:
+        List of article objects.
+    """
+
+    if isinstance(data, list):
+        return [d for d in data if isinstance(d, dict)]
+
+    if isinstance(data, dict):
+        arts = data.get("articles")
+        if isinstance(arts, list):
+            return [a for a in arts if isinstance(a, dict)]
+        return [data]
+
+    raise ValueError("Unsupported document structure")
+
+
 def _read_json_file(path: str) -> List[Dict[str, Any]]:
     """Load a JSON/JSONL file into a list of article objects.
 
@@ -208,6 +230,7 @@ def _read_json_file(path: str) -> List[Dict[str, Any]]:
     Returns:
         List of article objects.
     """
+
     if _is_jsonl(path):
         out = []
         with open(path, "rb") as f:
@@ -222,32 +245,51 @@ def _read_json_file(path: str) -> List[Dict[str, Any]]:
     with open(path, "rb") as f:
         data = json.loads(f.read())
 
-    if isinstance(data, list):
-        return data
-    elif isinstance(data, dict):
-        return [data]
-    else:
-        raise ValueError(f"Unsupported JSON structure in {path}")
+    return _extract_articles(data)
+
+
+def _read_yaml_file(path: str) -> List[Dict[str, Any]]:
+    """Load a YAML file into a list of article objects.
+
+    Args:
+        path: Path to the YAML file.
+
+    Returns:
+        List of article objects.
+    """
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    return _extract_articles(data)
 
 
 def _iter_json_objects(
     root: str,
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
-    """Yield ``(source_file, article)`` pairs from ``root`` directory.
+    """Yield (source_file, article) pairs from ``root`` directory.
+
+    Handles JSON, JSONL or YAML files containing article records or parser
+    outputs with an ``articles`` field.
 
     Args:
-        root: Root directory to traverse for JSON files.
+        root: Root directory to traverse for data files.
 
     Yields:
         Tuples of source file path and article object.
     """
+
     for dirpath, _, filenames in os.walk(root):
         for fn in filenames:
-            if not fn.lower().endswith((".json", ".jsonl")):
-                continue
+            lower = fn.lower()
             path = os.path.join(dirpath, fn)
             try:
-                objs = _read_json_file(path)
+                if lower.endswith((".json", ".jsonl")):
+                    objs = _read_json_file(path)
+                elif lower.endswith((".yaml", ".yml")):
+                    objs = _read_yaml_file(path)
+                else:
+                    continue
                 for obj in objs:
                     yield path, obj
             except Exception as e:
@@ -412,9 +454,11 @@ def ingest_folder(
     chunk_tokens: int = MAX_TOKENS_PER_CHUNK,
     overlap_tokens: int = OVERLAP_TOKENS,
 ) -> None:
-    """Ingest all JSON/JSONL files in 'root' into Qdrant.
+    """Ingest articles from ``root`` into Qdrant.
 
-    Splits very long articles into token chunks (if chunk_tokens > 0).
+    Accepts JSON, JSONL or YAML files containing either individual article
+    objects or parser dumps with an ``articles`` list. Splits very long
+    articles into token chunks when ``chunk_tokens`` is greater than zero.
 
     Args:
         root: The root folder to ingest.
@@ -632,103 +676,3 @@ def delete_by_article_id(article_id: str, collection: str) -> int:
         f"[INFO] Deleted ~{total_deleted} points for article_id={article_id}"
     )
     return total_deleted
-
-
-# -----------------------------
-# Optional: simple CLI helpers
-# -----------------------------
-def _cli() -> None:
-    import argparse
-
-    ap = argparse.ArgumentParser(
-        description="Local RAG for legal JSON articles (Qdrant + Ollama)."
-    )
-    ap.add_argument("--collection", default="legal_articles")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-
-    s1 = sub.add_parser("recreate", help="(Re)create Qdrant collection.")
-    s1.add_argument("--dims", type=int, default=EMBED_DIMS)
-
-    s2 = sub.add_parser("ingest", help="Ingest a folder of JSON/JSONL files.")
-    s2.add_argument("folder")
-    s2.add_argument("--batch", type=int, default=32)
-    s2.add_argument("--chunk", type=int, default=MAX_TOKENS_PER_CHUNK)
-    s2.add_argument("--overlap", type=int, default=OVERLAP_TOKENS)
-
-    s3 = sub.add_parser("search", help="Semantic search.")
-    s3.add_argument("query")
-    s3.add_argument("--topk", type=int, default=TOP_K_RETRIEVE)
-    s3.add_argument("--label", type=str, default=None)
-
-    s4 = sub.add_parser("ask", help="Ask a question with citations.")
-    s4.add_argument("question")
-    s4.add_argument("--topk", type=int, default=TOP_K_RETRIEVE)
-    s4.add_argument("--finalk", type=int, default=TOP_K_CONTEXT)
-    s4.add_argument("--no-rerank", action="store_true")
-
-    s5 = sub.add_parser("delete", help="Delete by article_id.")
-    s5.add_argument("article_id")
-
-    s6 = sub.add_parser(
-        "start-qdrant", help="Attempt to start Qdrant via Docker."
-    )
-    s6.add_argument("--name", default="qdrant")
-    s6.add_argument("--port", type=int, default=6333)
-    s6.add_argument("--volume", default="qdrant_storage")
-    s6.add_argument("--image", default="qdrant/qdrant:latest")
-
-    args = ap.parse_args()
-    if args.cmd == "recreate":
-        recreate_collection(args.collection, vector_size=args.dims)
-    elif args.cmd == "ingest":
-        ingest_folder(
-            args.folder,
-            collection=args.collection,
-            batch_size=args.batch,
-            chunk_tokens=args.chunk,
-            overlap_tokens=args.overlap,
-        )
-    elif args.cmd == "search":
-        res = search(
-            args.query,
-            collection=args.collection,
-            top_k=args.topk,
-            filter_by_label=args.label,
-        )
-        for i, r in enumerate(res, 1):
-            print(
-                f"\n[{i}] score={r['score']:.4f} "
-                f"label={r['label']} "
-                f"article_id={r['article_id']}\n"
-                f"{r['text'][:600]}..."
-            )
-    elif args.cmd == "ask":
-        out = ask_with_context(
-            args.question,
-            collection=args.collection,
-            top_k=args.topk,
-            final_k=args.finalk,
-            use_reranker=not args.no_rerank,
-        )
-        print("\n--- Answer ---\n")
-        print(out["text"])
-        print("\n--- Contexts ---")
-        for i, c in enumerate(out["contexts"], 1):
-            print(
-                f"[{i}] label={c['label']} "
-                f"article_id={c['article_id']} "
-                f"src={c['source_file']}"
-            )
-    elif args.cmd == "delete":
-        delete_by_article_id(args.article_id, collection=args.collection)
-    elif args.cmd == "start-qdrant":
-        start_qdrant_docker(
-            name=args.name,
-            port=args.port,
-            volume=args.volume,
-            image=args.image,
-        )
-
-
-if __name__ == "__main__":
-    _cli()
