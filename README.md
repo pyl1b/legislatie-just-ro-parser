@@ -159,11 +159,12 @@ Groups articles inside a section:
 
 ### The article
 
-Contains the full text and its components:
+Contains the identifier, label, full text and its components:
 
 ```js
 {
     "article_id": "...",
+    "label": "...",
     "full_text": "...",
     "paragraphs": [...],
     "notes": [...]
