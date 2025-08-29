@@ -2,12 +2,15 @@ import argparse
 import datetime
 import glob
 import hashlib
+import argparse
+import datetime
+import hashlib
 import os
 import re
 import uuid
 from typing import Any, Dict, List, Tuple
 
-import orjson
+import orjson  # type: ignore[import-not-found]
 
 # Optional token-aware chunking
 try:

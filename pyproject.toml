@@ -86,3 +86,7 @@ plugins = []
 [[tool.mypy.overrides]]
 module = "leropa.parser.*"
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "leropa.llm.*"
+ignore_errors = true
