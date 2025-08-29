@@ -424,7 +424,8 @@ def _ensure_book(art_tag: Any, books: dict[str, Book]) -> Book | None:  # noqa: 
         books: Mapping of existing books keyed by identifier.
 
     Returns:
-        Existing or newly created ``Book`` instance, or ``None`` when not found.
+        Existing or newly created ``Book`` instance, or ``None`` when
+        not found.
     """
 
     # Locate the nearest book body containing the article.
@@ -464,7 +465,8 @@ def _ensure_title(
         book: Parent book instance if available.
 
     Returns:
-        Existing or newly created ``Title`` instance, or ``None`` when not found.
+        Existing or newly created ``Title`` instance, or ``None`` when
+        not found.
     """
 
     # Locate the nearest title body containing the article.
@@ -515,7 +517,8 @@ def _ensure_chapter(
         book: Parent book instance if available.
 
     Returns:
-        Existing or newly created ``Chapter`` instance, or ``None`` when not found.
+        Existing or newly created ``Chapter`` instance, or ``None`` when
+        not found.
     """
 
     # Locate the nearest chapter body containing the article.
@@ -572,7 +575,8 @@ def _ensure_section(
         book: Parent book instance if available.
 
     Returns:
-        Existing or newly created ``Section`` instance, or ``None`` when not found.
+        Existing or newly created ``Section`` instance, or ``None`` when
+        not found.
     """
 
     # Locate the nearest section body containing the article.
@@ -664,7 +668,8 @@ def _ensure_subsection(
         section: Parent section instance if available.
 
     Returns:
-        Existing or newly created subsection instance, or ``None`` when not found.
+        Existing or newly created subsection instance, or ``None`` when
+        not found.
     """
 
     if not section:

@@ -4,6 +4,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
+import yaml
 
 rag: Any
 try:
@@ -76,3 +77,29 @@ def test_validate_article_normalizes_fields() -> None:
     assert result == {"full_text": "t", "article_id": "1", "label": "2"}
     invalid = {"full_text": "", "article_id": 1, "label": "L"}
     assert rag._validate_article(invalid, "src") is None
+
+
+def test_read_json_file_extracts_articles_from_parser_output(
+    tmp_path: Path,
+) -> None:
+    """Extract articles from parser-style JSON files."""
+
+    doc = {"articles": [{"full_text": "a", "article_id": 1, "label": "A"}]}
+    json_file = tmp_path / "doc.json"
+    json_file.write_text(json.dumps(doc))
+
+    objs = rag._read_json_file(str(json_file))
+
+    assert objs[0]["label"] == "A"
+
+
+def test_iter_json_objects_handles_yaml_parser_output(tmp_path: Path) -> None:
+    """Yield articles from YAML parser output."""
+
+    data = {"articles": [{"full_text": "x", "article_id": 1, "label": "A"}]}
+    yaml_file = tmp_path / "doc.yaml"
+    yaml_file.write_text(yaml.safe_dump(data))
+
+    items = list(rag._iter_json_objects(str(tmp_path)))
+
+    assert items[0][1]["article_id"] == 1
