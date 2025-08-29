@@ -5,12 +5,11 @@ try:
 except ImportError:
     import json
 
+import importlib
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import patch
-
-import importlib
-from types import SimpleNamespace
 
 import yaml  # type: ignore[import-untyped]
 from click.testing import CliRunner
@@ -325,10 +324,10 @@ def test_export_md_requires_llm_deps() -> None:
     runner = CliRunner()
     real_import = importlib.import_module
 
-    def fake_import(name: str, *args: Any, **kwargs: Any) -> Any:
+    def fake_import(name: str, package: str | None = None) -> ModuleType:
         if name.startswith("leropa.llm"):
             raise ModuleNotFoundError
-        return real_import(name, *args, **kwargs)
+        return real_import(name, package)
 
     with (
         patch("leropa.cli.importlib.import_module", side_effect=fake_import),

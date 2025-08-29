@@ -1,112 +1,159 @@
+"""Utilities to export legal articles to Markdown files."""
+
 import argparse
 import datetime
 import glob
 import hashlib
-import argparse
-import datetime
-import hashlib
+import json
 import os
 import re
 import uuid
 from typing import Any, Dict, List, Tuple
 
-import orjson  # type: ignore[import-not-found]
+# Try to use orjson if available for speed.
+try:
+    import orjson  # type: ignore[import-not-found]
+except ImportError:
+    orjson = None  # type: ignore[assignment]
 
-# Optional token-aware chunking
+# Optional token-aware chunking.
 try:
     import tiktoken
 
     _ENC = tiktoken.get_encoding("cl100k_base")
-except Exception:
-    _ENC = None  # type: ignore
+except Exception:  # pragma: no cover
+    _ENC = None  # type: ignore[assignment]
+
 
 # ---------- Helpers ----------
 
 
 def now_iso() -> str:
+    """Return current UTC timestamp."""
+
+    # Build an ISO-formatted UTC timestamp without microseconds.
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
 
 def slug(s: str, lim: int = 80) -> str:
+    """Return a slugified version of the string."""
+
+    # Replace non alphanumeric characters with underscores.
     s = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(s))
     return s[:lim] or str(uuid.uuid4())
 
 
 def sha1_text(text: str) -> str:
+    """Return the SHA1 hash for the text."""
+
+    # Encode text to bytes then compute hash.
     return hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
 
 
+def _json_loads(data: bytes) -> object:
+    """Load JSON bytes using orjson when available."""
+
+    # Use orjson if available, otherwise fall back to json.
+    if orjson is not None:
+        return orjson.loads(data)
+
+    # Decode bytes to string for the stdlib json module.
+    return json.loads(data.decode())
+
+
 def read_any_json(path: str) -> List[Dict[str, Any]]:
-    out = []
+    """Read a JSON or JSONL file and return a list of records."""
+
+    out: List[Dict[str, Any]] = []
+
+    # Handle newline-delimited JSON by loading line by line.
     if path.lower().endswith(".jsonl"):
         with open(path, "rb") as f:
             for ln in f:
                 ln = ln.strip()
                 if ln:
-                    out.append(orjson.loads(ln))
+                    out.append(_json_loads(ln))
         return out
+
     with open(path, "rb") as f:
-        data = orjson.loads(f.read())
+        data = _json_loads(f.read())
+
     if isinstance(data, list):
         return data
     if isinstance(data, dict):
         return [data]
+
     raise ValueError(f"Unsupported JSON structure in {path}")
 
 
 def token_len(text: str) -> int:
+    """Return the token count for the text."""
+
     if _ENC is None:
-        # quick heuristic: words as tokens
+        # Quick heuristic: words as tokens.
         return max(1, len(text.split()))
+
     return len(_ENC.encode(text))
 
 
 def token_chunks(text: str, max_tokens: int, overlap_tokens: int) -> List[str]:
-    """Token-aware chunking with overlap; falls back to word-based if needed.
+    """Split text into chunks.
 
     Args:
         text: The text to chunk.
-        max_tokens: The maximum number of tokens per chunk.
-        overlap_tokens: The number of tokens to overlap between chunks.
+        max_tokens: Maximum tokens per chunk.
+        overlap_tokens: Tokens to overlap between chunks.
 
     Returns:
-        A list of chunks.
+        A list of text chunks.
     """
     if max_tokens <= 0:
         return [text]
+
     step = max(1, max_tokens - overlap_tokens)
 
     if _ENC is None:
+        # Fall back to splitting by words when tokenizer is unavailable.
         words = text.split()
-        chunks = []
+        chunks: List[str] = []
+
         for start in range(0, len(words), step):
             end = min(len(words), start + max_tokens)
             if start >= end:
                 break
             chunks.append(" ".join(words[start:end]))
+
         return chunks
 
     toks = _ENC.encode(text)
-    chunks = []
+    chunks: List[str] = []
+
     for start in range(0, len(toks), step):
         end = min(len(toks), start + max_tokens)
         if start >= end:
             break
         chunks.append(_ENC.decode(toks[start:end]))
+
     return chunks
 
 
 def ensure_dir(p: str) -> None:
+    """Create directory if it does not exist."""
+
     os.makedirs(p, exist_ok=True)
 
 
 def normalize_record(rec: Dict[str, Any], source_file: str) -> Dict[str, Any]:
+    """Validate and normalize a record."""
+
     missing = [k for k in ("full_text", "article_id", "label") if k not in rec]
     if missing:
         raise ValueError(f"Missing keys {missing}")
+
     text = (rec.get("full_text") or "").strip()
     if not text:
         raise ValueError("Empty full_text")
+
     return {
         "full_text": text,
         "article_id": str(rec.get("article_id")),
@@ -127,16 +174,17 @@ def export_folder(
     body_heading: str = "TEXT",
     ext: str = ".md",
 ) -> Tuple[int, int]:
-    """
-    Returns: (num_articles, num_files_written)
-    """
+    """Export all JSON articles inside a folder."""
+
     ensure_dir(output_dir)
+
     files = glob.glob(
         os.path.join(input_dir, "**", "*.json"), recursive=True
     ) + glob.glob(os.path.join(input_dir, "**", "*.jsonl"), recursive=True)
 
     num_articles = 0
     num_files = 0
+
     for f in files:
         try:
             for raw in read_any_json(f):
@@ -156,12 +204,14 @@ def export_folder(
                 parts = token_chunks(
                     text, max_tokens=max_tokens, overlap_tokens=overlap_tokens
                 )
+
                 total = len(parts)
                 num_articles += 1
 
                 base = f"{slug(label)}__{slug(article_id)}"
                 for idx, chunk in enumerate(parts):
-                    chunk_idx = idx  # zero-based
+                    chunk_idx = idx
+
                     meta = {
                         "title": title,
                         "article_id": article_id,
@@ -176,7 +226,7 @@ def export_folder(
                         "exporter_version": "1.0",
                     }
 
-                    # YAML front-matter
+                    # YAML front-matter.
                     yaml = (
                         "---\n"
                         + "\n".join(
@@ -186,7 +236,7 @@ def export_folder(
                         + "\n---\n"
                     )
 
-                    # Body as Markdown with a clear heading
+                    # Body as Markdown with a clear heading.
                     body = (
                         f"# {title}\n"
                         "\n"
@@ -196,14 +246,17 @@ def export_folder(
                         "\n"
                         f"{chunk}\n"
                     )
+
                     content = yaml + "\n" + body
 
                     fname = f"{base}__chunk{chunk_idx:03d}{ext}"
                     out_p = os.path.join(output_dir, fname)
+
                     with open(out_p, "w", encoding="utf-8") as w:
                         w.write(content)
+
                     num_files += 1
-        except Exception as e:
+        except Exception as e:  # pragma: no cover - best effort.
             print(f"[warn] {f}: {e}")
 
     return num_articles, num_files
@@ -213,9 +266,13 @@ def export_folder(
 
 
 def main() -> None:
+    """CLI entry point."""
+
     ap = argparse.ArgumentParser(
-        description="Export legal JSON articles to chunked "
-        "Markdown with YAML front-matter."
+        description=(
+            "Export legal JSON articles to chunked Markdown with YAML "
+            "front-matter."
+        )
     )
     ap.add_argument("input_dir", help="Folder with .json/.jsonl files")
     ap.add_argument("output_dir", help="Folder to write .md files into")
@@ -250,6 +307,7 @@ def main() -> None:
     args = ap.parse_args()
 
     print(f"[info] token-aware chunking: {'on' if _ENC else 'word-based'}")
+
     arts, files = export_folder(
         args.input_dir,
         args.output_dir,
@@ -259,6 +317,7 @@ def main() -> None:
         body_heading=args.body_heading,
         ext=args.ext,
     )
+
     print(
         f"[done] exported {arts} articles into {files} "
         f"files @ {args.output_dir}"
