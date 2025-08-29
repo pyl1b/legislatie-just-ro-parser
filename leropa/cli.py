@@ -271,6 +271,7 @@ def recreate(ctx: click.Context, dims: int) -> None:
     # Import the RAG module and trigger the collection creation.
     mod = _import_llm_module("rag_legal_qdrant")
     mod.recreate_collection(ctx.obj["collection"], vector_size=dims)
+    click.echo(f"[INFO] Collection '{ctx.obj['collection']}' ready.")
 
 
 @rag.command()
@@ -312,12 +313,16 @@ def ingest(
 
     # Import the RAG module and process the folder.
     mod = _import_llm_module("rag_legal_qdrant")
-    mod.ingest_folder(
+    total_ingested = mod.ingest_folder(
         folder,
         collection=ctx.obj["collection"],
         batch_size=batch,
         chunk_tokens=chunk,
         overlap_tokens=overlap,
+    )
+    click.echo(
+        f"[INFO] Ingested {total_ingested} chunks into "
+        f"'{ctx.obj['collection']}' from '{folder}'."
     )
 
 
@@ -422,7 +427,12 @@ def delete(ctx: click.Context, article_id: str) -> None:
 
     # Import the RAG module and perform the deletion.
     mod = _import_llm_module("rag_legal_qdrant")
-    mod.delete_by_article_id(article_id, collection=ctx.obj["collection"])
+    total_deleted = mod.delete_by_article_id(
+        article_id, collection=ctx.obj["collection"]
+    )
+    click.echo(
+        f"[INFO] Deleted ~{total_deleted} points for article_id={article_id}"
+    )
 
 
 @rag.command("start-qdrant")
@@ -461,4 +471,15 @@ def start_qdrant(
 
     # Import the RAG module and start the Docker container.
     mod = _import_llm_module("rag_legal_qdrant")
-    mod.start_qdrant_docker(name=name, port=port, volume=volume, image=image)
+    result = mod.start_qdrant_docker(
+        name=name, port=port, volume=volume, image=image
+    )
+    if result:
+        click.echo(f"[INFO] Qdrant requested on http://localhost:{port}")
+    else:
+        click.echo(
+            "[ERROR] Failed to start Qdrant. "
+            "Run manually:\n"
+            f"  docker run --name {name} -p {port}:{port} "
+            f"-v {volume}:/qdrant/storage {image}"
+        )
