@@ -7,6 +7,8 @@ init:
 
 init-d:
 	pip install -e .[dev]
+	pip install -e .[orjson]
+	pip install -e .[llm]
 
 
 test:

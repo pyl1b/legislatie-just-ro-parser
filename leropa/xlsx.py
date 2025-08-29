@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-import json
+try:
+    import orjson as json
+except ImportError:
+    import json
+
 from pathlib import Path
 from typing import Any, Dict, List
 from uuid import uuid4

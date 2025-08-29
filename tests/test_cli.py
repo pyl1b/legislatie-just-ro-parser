@@ -1,6 +1,10 @@
 """Tests for the command line interface."""
 
-import json
+try:
+    import orjson as json
+except ImportError:
+    import json
+
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch

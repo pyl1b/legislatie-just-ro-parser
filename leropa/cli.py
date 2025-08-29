@@ -1,4 +1,8 @@
-import json
+try:
+    import orjson as json
+except ImportError:
+    import json
+
 import logging
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
