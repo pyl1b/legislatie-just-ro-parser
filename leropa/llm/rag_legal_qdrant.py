@@ -140,6 +140,14 @@ except Exception:
 # Helpers
 # -----------------------------
 def _token_len(text: str) -> int:
+    """Return the number of tokens in ``text``.
+
+    Args:
+        text: Text to measure.
+
+    Returns:
+        Count of tokens according to the configured encoder.
+    """
     if not _ENC:
         # fallback heuristic
         return max(1, len(text.split()))
@@ -149,6 +157,16 @@ def _token_len(text: str) -> int:
 def _split_into_token_chunks(
     text: str, chunk_tokens: int, overlap_tokens: int
 ) -> List[str]:
+    """Split ``text`` into chunks of approximately ``chunk_tokens`` tokens.
+
+    Args:
+        text: Source text to split.
+        chunk_tokens: Maximum tokens per chunk.
+        overlap_tokens: Tokens overlapping between chunks.
+
+    Returns:
+        List of text chunks.
+    """
     if chunk_tokens <= 0:
         return [text]
     if not _ENC:
@@ -176,17 +194,19 @@ def _split_into_token_chunks(
 
 
 def _is_jsonl(path: str) -> bool:
+    """Return ``True`` if ``path`` points to a JSON Lines file."""
     # treat .jsonl as JSON lines; .json can be array or single object
     return path.lower().endswith(".jsonl")
 
 
 def _read_json_file(path: str) -> List[Dict[str, Any]]:
-    """
-    Returns a list of article objects from a JSON/JSONL file.
-    Accepts:
-      - JSON Lines (one object per line)
-      - JSON array
-      - Single JSON object
+    """Load a JSON/JSONL file into a list of article objects.
+
+    Args:
+        path: Path to the JSON or JSONL file.
+
+    Returns:
+        List of article objects.
     """
     if _is_jsonl(path):
         out = []
@@ -213,8 +233,13 @@ def _read_json_file(path: str) -> List[Dict[str, Any]]:
 def _iter_json_objects(
     root: str,
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
-    """
-    Yields (source_file, article_obj).
+    """Yield ``(source_file, article)`` pairs from ``root`` directory.
+
+    Args:
+        root: Root directory to traverse for JSON files.
+
+    Yields:
+        Tuples of source file path and article object.
     """
     for dirpath, _, filenames in os.walk(root):
         for fn in filenames:
@@ -232,6 +257,15 @@ def _iter_json_objects(
 def _validate_article(
     obj: Dict[str, Any], source: str
 ) -> Optional[Dict[str, Any]]:
+    """Validate and normalize an article object.
+
+    Args:
+        obj: Raw article data.
+        source: Path of the source file for logging.
+
+    Returns:
+        Normalized article mapping or ``None`` if validation fails.
+    """
     missing = [k for k in ("full_text", "article_id", "label") if k not in obj]
     if missing:
         print(f"[WARN] {source}: missing keys {missing}; skipping.")
@@ -250,6 +284,7 @@ def _validate_article(
 
 
 def _ollama_embed(text: str) -> List[float]:
+    """Return embedding vector for ``text`` using Ollama."""
     r = requests.post(
         OLLAMA_EMBED_URL,
         json={"model": EMBED_MODEL, "prompt": text},
@@ -261,6 +296,16 @@ def _ollama_embed(text: str) -> List[float]:
 
 
 def _ollama_chat(system: str, user: str, stream: bool = False) -> str:
+    """Send a chat prompt to Ollama and return the response text.
+
+    Args:
+        system: System prompt.
+        user: User prompt.
+        stream: Whether to stream the response.
+
+    Returns:
+        Generated text reply.
+    """
     payload = {
         "model": GEN_MODEL,
         "messages": [
@@ -304,9 +349,13 @@ def start_qdrant_docker(
     volume: str = "qdrant_storage",
     image: str = "qdrant/qdrant:latest",
 ) -> None:
-    """
-    Helper to start Qdrant via Docker (idempotent-ish).
-    Requires Docker Desktop to be installed and running.
+    """Start a Qdrant Docker container if not already running.
+
+    Args:
+        name: Name of the Docker container.
+        port: Host port to expose Qdrant on.
+        volume: Docker volume for persistent storage.
+        image: Docker image to run.
     """
     try:
         # Try to start if already created
@@ -341,8 +390,12 @@ def recreate_collection(
     vector_size: int = EMBED_DIMS,
     distance: Distance = Distance.COSINE,
 ) -> None:
-    """
-    (Re)create a Qdrant collection with the expected vector size and distance.
+    """Create or recreate a Qdrant collection.
+
+    Args:
+        collection: Name of the collection.
+        vector_size: Size of the embedding vectors.
+        distance: Similarity metric used for vectors.
     """
     client = QdrantClient(url=QDRANT_URL)
     client.recreate_collection(

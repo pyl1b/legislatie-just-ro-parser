@@ -14,7 +14,7 @@ from typing import Optional
 
 import click
 import yaml  # type: ignore
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore[import-not-found]
 
 from leropa import parser
 from leropa.xlsx import write_workbook
@@ -26,22 +26,21 @@ except PackageNotFoundError:
 
 
 @click.group()
-@click.option("--debug/--no-debug", default=False)
-@click.option("--trace/--no-trace", default=False)
+@click.option(
+    "--debug/--no-debug", default=False, help="Enable verbose debug logging."
+)
+@click.option(
+    "--trace/--no-trace", default=False, help="Enable trace level logging."
+)
 @click.option(
     "--log-file",
     type=click.Path(file_okay=True, dir_okay=False),
     envvar="LEROPA_LOG_FILE",
+    help="Path to write log output to instead of stderr.",
 )
 @click.version_option(__version__, prog_name="leropa")
 def cli(debug: bool, trace: bool, log_file: Optional[str] = None) -> None:
-    """Configure logging and load environment variables.
-
-    Args:
-        debug: Toggle debug logging.
-        trace: Toggle trace logging.
-        log_file: Optional path to the log file.
-    """
+    """Configure logging and load environment variables."""
     if trace:
         level = 1
     elif debug:
@@ -94,11 +93,6 @@ def convert(
 
     Args:
         ver_id: Identifier for the document version to convert.
-        cache_dir: Directory used to cache downloaded HTML files.
-        output_path: Optional file or directory path for the converted data.
-            If a directory is provided, the file name is automatically
-            generated from ``ver_id``.
-        output_format: Format of the converted data.
     """
 
     cache_path = Path(cache_dir) if cache_dir else None
@@ -226,11 +220,6 @@ def export_md(
     Args:
         input_dir: Folder containing JSON or JSONL files.
         output_dir: Destination folder for Markdown files.
-        max_tokens: Tokens per chunk; ``0`` disables chunking.
-        overlap: Token overlap between chunks.
-        ext: Output file extension.
-        title_template: Template for the document title.
-        body_heading: Heading displayed before the text body.
     """
 
     # Import the exporter module, aborting if dependencies are missing.
@@ -260,12 +249,7 @@ def export_md(
 )
 @click.pass_context
 def rag(ctx: click.Context, collection: str) -> None:
-    """Interact with the local Qdrant/Ollama RAG pipeline.
-
-    Args:
-        ctx: Click context object.
-        collection: Name of the Qdrant collection to use.
-    """
+    """Interact with the local Qdrant/Ollama RAG pipeline."""
 
     # Store the collection name for the subcommands.
     ctx.ensure_object(dict)
@@ -320,7 +304,11 @@ def ingest(
     chunk: int = 1000,
     overlap: int = 200,
 ) -> None:
-    """Ingest a folder of JSON/JSONL files."""
+    """Ingest a folder of JSON/JSONL files.
+
+    Args:
+        folder: Path to the directory containing the data files.
+    """
 
     # Import the RAG module and process the folder.
     mod = _import_llm_module("rag_legal_qdrant")
@@ -347,7 +335,11 @@ def ingest(
 def search(
     ctx: click.Context, query: str, topk: int = 24, label: str | None = None
 ) -> None:
-    """Perform a semantic search over ingested articles."""
+    """Perform a semantic search over ingested articles.
+
+    Args:
+        query: Text to search for.
+    """
 
     # Import the RAG module and perform the search.
     mod = _import_llm_module("rag_legal_qdrant")
@@ -391,7 +383,11 @@ def ask(
     finalk: int = 8,
     no_rerank: bool = False,
 ) -> None:
-    """Ask a question and receive an answer with context."""
+    """Ask a question and receive an answer with context.
+
+    Args:
+        question: The question to ask the model.
+    """
 
     # Import the RAG module and get the answer with context.
     mod = _import_llm_module("rag_legal_qdrant")
@@ -418,7 +414,11 @@ def ask(
 @click.argument("article_id")
 @click.pass_context
 def delete(ctx: click.Context, article_id: str) -> None:
-    """Delete items from the collection by ``article_id``."""
+    """Delete items from the collection by ``article_id``.
+
+    Args:
+        article_id: Identifier of the article to remove.
+    """
 
     # Import the RAG module and perform the deletion.
     mod = _import_llm_module("rag_legal_qdrant")
@@ -426,10 +426,31 @@ def delete(ctx: click.Context, article_id: str) -> None:
 
 
 @rag.command("start-qdrant")
-@click.option("--name", default="qdrant", show_default=True)
-@click.option("--port", type=int, default=6333, show_default=True)
-@click.option("--volume", default="qdrant_storage", show_default=True)
-@click.option("--image", default="qdrant/qdrant:latest", show_default=True)
+@click.option(
+    "--name",
+    default="qdrant",
+    show_default=True,
+    help="Docker container name.",
+)
+@click.option(
+    "--port",
+    type=int,
+    default=6333,
+    show_default=True,
+    help="Qdrant port to expose.",
+)
+@click.option(
+    "--volume",
+    default="qdrant_storage",
+    show_default=True,
+    help="Docker volume for persistent storage.",
+)
+@click.option(
+    "--image",
+    default="qdrant/qdrant:latest",
+    show_default=True,
+    help="Docker image to run.",
+)
 def start_qdrant(
     name: str = "qdrant",
     port: int = 6333,

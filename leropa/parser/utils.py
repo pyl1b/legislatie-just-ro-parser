@@ -17,7 +17,14 @@ from .types import NoteList, ParagraphList
 
 
 def _normalize_whitespace(text: str) -> str:
-    """Collapse consecutive whitespace and tidy punctuation spacing."""
+    """Collapse consecutive whitespace and tidy punctuation spacing.
+
+    Args:
+        text: Raw text to normalize.
+
+    Returns:
+        Text with extraneous whitespace removed.
+    """
 
     cleaned = re.sub(r"\s+", " ", text).strip()
     return re.sub(r"\s+([,.;:!?\)])", r"\1", cleaned)
@@ -83,7 +90,14 @@ def _parse_note_details(text: str) -> dict[str, str | None]:
 
 
 def _note_from_tag(tag: Any) -> Note:  # noqa: ANN401
-    """Create a Note instance from the given HTML tag."""
+    """Create a Note instance from the given HTML tag.
+
+    Args:
+        tag: ``span`` element containing the note.
+
+    Returns:
+        Parsed ``Note`` instance.
+    """
 
     note_id = str(tag.get("id", ""))
     text = _normalize_whitespace(tag.get_text(" ", strip=True))
@@ -291,7 +305,14 @@ def _parse_aln_body(tag: Any) -> Paragraph:  # noqa: ANN401
 
 
 def _get_paragraphs(body_tag: Any) -> tuple[ParagraphList, NoteList]:  # noqa: ANN401
-    """Extract paragraph and note information from an article body tag."""
+    """Extract paragraph and note information from an article body tag.
+
+    Args:
+        body_tag: ``span`` element containing the article body.
+
+    Returns:
+        Tuple of parsed paragraphs and notes.
+    """
 
     paragraphs: ParagraphList = []
     notes: NoteList = []
@@ -396,7 +417,15 @@ def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
 
 
 def _ensure_book(art_tag: Any, books: dict[str, Book]) -> Book | None:  # noqa: ANN401
-    """Retrieve or create a book for the given article tag."""
+    """Retrieve or create a book for the given article tag.
+
+    Args:
+        art_tag: Tag representing the article in the HTML.
+        books: Mapping of existing books keyed by identifier.
+
+    Returns:
+        Existing or newly created ``Book`` instance, or ``None`` when not found.
+    """
 
     # Locate the nearest book body containing the article.
     book_body = art_tag.find_parent("span", class_="S_CRT_BDY")
@@ -427,7 +456,16 @@ def _ensure_title(
     titles: dict[str, Title],
     book: Book | None,
 ) -> Title | None:
-    """Retrieve or create a title for the given article tag."""
+    """Retrieve or create a title for the given article tag.
+
+    Args:
+        art_tag: Tag representing the article in the HTML.
+        titles: Mapping of existing titles keyed by identifier.
+        book: Parent book instance if available.
+
+    Returns:
+        Existing or newly created ``Title`` instance, or ``None`` when not found.
+    """
 
     # Locate the nearest title body containing the article.
     title_body = art_tag.find_parent("span", class_="S_TTL_BDY")
@@ -468,7 +506,17 @@ def _ensure_chapter(
     title: Title | None,
     book: Book | None,
 ) -> Chapter | None:
-    """Retrieve or create a chapter for the given article tag."""
+    """Retrieve or create a chapter for the given article tag.
+
+    Args:
+        art_tag: Tag representing the article in the HTML.
+        chapters: Mapping of existing chapters keyed by identifier.
+        title: Parent title instance if available.
+        book: Parent book instance if available.
+
+    Returns:
+        Existing or newly created ``Chapter`` instance, or ``None`` when not found.
+    """
 
     # Locate the nearest chapter body containing the article.
     chapter_body = art_tag.find_parent("span", class_="S_CAP_BDY")
@@ -513,7 +561,19 @@ def _ensure_section(
     title: Title | None,
     book: Book | None,
 ) -> Section | None:
-    """Retrieve or create a section for the given article tag."""
+    """Retrieve or create a section for the given article tag.
+
+    Args:
+        art_tag: Tag representing the article in the HTML.
+        sections: Mapping of existing sections keyed by identifier.
+        section_titles: Mapping of section numbers to section objects.
+        chapter: Parent chapter instance if available.
+        title: Parent title instance if available.
+        book: Parent book instance if available.
+
+    Returns:
+        Existing or newly created ``Section`` instance, or ``None`` when not found.
+    """
 
     # Locate the nearest section body containing the article.
     section_body = art_tag.find_parent("span", class_="S_SEC_BDY")
@@ -595,7 +655,17 @@ def _ensure_subsection(
     section_titles: dict[str, Section],
     section: Section | None,
 ) -> Section | None:
-    """Retrieve or create a subsection for the given article tag."""
+    """Retrieve or create a subsection for the given article tag.
+
+    Args:
+        art_tag: Tag representing the article in the HTML.
+        sections: Mapping of existing sections keyed by identifier.
+        section_titles: Mapping of section numbers to section objects.
+        section: Parent section instance if available.
+
+    Returns:
+        Existing or newly created subsection instance, or ``None`` when not found.
+    """
 
     if not section:
         return None

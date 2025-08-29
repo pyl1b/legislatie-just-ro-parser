@@ -38,7 +38,15 @@ def now_iso() -> str:
 
 
 def slug(s: str, lim: int = 80) -> str:
-    """Return a slugified version of the string."""
+    """Return a slugified version of the string.
+
+    Args:
+        s: Input string to slugify.
+        lim: Maximum length of the slug.
+
+    Returns:
+        Slugified string.
+    """
 
     # Replace non alphanumeric characters with underscores.
     s = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(s))
@@ -46,14 +54,28 @@ def slug(s: str, lim: int = 80) -> str:
 
 
 def sha1_text(text: str) -> str:
-    """Return the SHA1 hash for the text."""
+    """Return the SHA1 hash for the text.
+
+    Args:
+        text: Input text.
+
+    Returns:
+        Hexadecimal SHA1 digest.
+    """
 
     # Encode text to bytes then compute hash.
     return hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
 
 
 def _json_loads(data: bytes) -> Dict[str, Any]:
-    """Load JSON bytes using orjson when available."""
+    """Load JSON bytes using orjson when available.
+
+    Args:
+        data: Raw JSON bytes.
+
+    Returns:
+        Parsed JSON object.
+    """
 
     # Use orjson if available, otherwise fall back to json.
     if orjson is not None:
@@ -67,7 +89,14 @@ def _json_loads(data: bytes) -> Dict[str, Any]:
 
 
 def read_any_json(path: str) -> List[Dict[str, Any]]:
-    """Read a JSON or JSONL file and return a list of records."""
+    """Read a JSON or JSONL file and return a list of records.
+
+    Args:
+        path: Path to the JSON or JSONL file.
+
+    Returns:
+        List of record dictionaries.
+    """
 
     out: List[Dict[str, Any]] = []
 
@@ -92,7 +121,14 @@ def read_any_json(path: str) -> List[Dict[str, Any]]:
 
 
 def token_len(text: str) -> int:
-    """Return the token count for the text."""
+    """Return the token count for the text.
+
+    Args:
+        text: Text to count tokens for.
+
+    Returns:
+        Estimated token count.
+    """
 
     if _ENC is None:
         # Quick heuristic: words as tokens.
@@ -143,13 +179,25 @@ def token_chunks(text: str, max_tokens: int, overlap_tokens: int) -> List[str]:
 
 
 def ensure_dir(p: str) -> None:
-    """Create directory if it does not exist."""
+    """Create directory if it does not exist.
+
+    Args:
+        p: Path to the directory.
+    """
 
     os.makedirs(p, exist_ok=True)
 
 
 def normalize_record(rec: Dict[str, Any], source_file: str) -> Dict[str, Any]:
-    """Validate and normalize a record."""
+    """Validate and normalize a record.
+
+    Args:
+        rec: Raw record mapping.
+        source_file: Name of the source file for attribution.
+
+    Returns:
+        Normalized record mapping.
+    """
 
     missing = [k for k in ("full_text", "article_id", "label") if k not in rec]
     if missing:
@@ -179,7 +227,20 @@ def export_folder(
     body_heading: str = "TEXT",
     ext: str = ".md",
 ) -> Tuple[int, int]:
-    """Export all JSON articles inside a folder."""
+    """Export all JSON articles inside a folder.
+
+    Args:
+        input_dir: Directory containing JSON or JSONL files.
+        output_dir: Destination directory for exported files.
+        max_tokens: Maximum tokens per chunk.
+        overlap_tokens: Token overlap between chunks.
+        title_template: Template for document titles.
+        body_heading: Heading shown before article text.
+        ext: Output file extension.
+
+    Returns:
+        Tuple of number of articles processed and files written.
+    """
 
     ensure_dir(output_dir)
 
