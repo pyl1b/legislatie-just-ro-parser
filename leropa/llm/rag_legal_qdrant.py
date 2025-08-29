@@ -80,7 +80,7 @@ except ImportError:
     import json  # type: ignore
 
 import requests
-import yaml  # type: ignore
+import yaml  # type: ignore[import]
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
