@@ -115,7 +115,8 @@ OLLAMA_CHAT_URL = os.environ.get(
 
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")  # 768 dims
 EMBED_DIMS = int(os.environ.get("EMBED_DIMS", "768"))
-GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.1:8b")
+# GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.1:8b")
+GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.2:3b")
 
 # If articles are long, you may wish to sub-chunk. Set to 0 to disable.
 MAX_TOKENS_PER_CHUNK = int(os.environ.get("MAX_TOKENS_PER_CHUNK", "1000"))

@@ -20,6 +20,7 @@
         "RERANKER",
         "setuptools",
         "sheetnames",
+        "Slugified",
         "tiktoken",
         "toks",
         "tqdm"

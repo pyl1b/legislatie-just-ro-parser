@@ -21,7 +21,9 @@ def json_dumps(data: object) -> str:
     """
 
     if orjson is not None:
-        return orjson.dumps(data).decode()
+        # Use indentation to ensure a space after ':' similar to json.dumps,
+        # keeping output stable across environments.
+        return orjson.dumps(data, option=orjson.OPT_INDENT_2).decode()
     return json.dumps(data, ensure_ascii=False)
 
 
