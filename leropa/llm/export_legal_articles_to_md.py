@@ -4,7 +4,6 @@ import argparse
 import datetime
 import glob
 import hashlib
-import json
 import os
 import re
 import uuid
@@ -12,11 +11,7 @@ from typing import Any, Dict, List, Tuple
 
 import yaml
 
-# Try to use orjson if available for speed.
-try:
-    import orjson  # type: ignore[import-not-found]
-except ImportError:
-    orjson = None  # type: ignore[assignment]
+from leropa.json_utils import json_loads
 
 # Optional token-aware chunking.
 try:
@@ -67,27 +62,6 @@ def sha1_text(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
 
 
-def _json_loads(data: bytes) -> Dict[str, Any]:
-    """Load JSON bytes using orjson when available.
-
-    Args:
-        data: Raw JSON bytes.
-
-    Returns:
-        Parsed JSON object.
-    """
-
-    # Use orjson if available, otherwise fall back to json.
-    if orjson is not None:
-        result = orjson.loads(data)
-    else:
-        # Decode bytes to string for the stdlib json module.
-        result = json.loads(data.decode())
-
-    assert isinstance(result, dict)
-    return result
-
-
 def read_any_json(path: str) -> List[Dict[str, Any]]:
     """Read a JSON or JSONL file and return a list of records.
 
@@ -106,11 +80,13 @@ def read_any_json(path: str) -> List[Dict[str, Any]]:
             for ln in f:
                 ln = ln.strip()
                 if ln:
-                    out.append(_json_loads(ln))
+                    obj = json_loads(ln)
+                    assert isinstance(obj, dict)
+                    out.append(obj)
         return out
 
     with open(path, "rb") as f:
-        data = _json_loads(f.read())
+        data = json_loads(f.read())
 
     if isinstance(data, list):
         return data

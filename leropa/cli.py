@@ -1,8 +1,3 @@
-try:
-    import orjson as json  # type: ignore[import-not-found]
-except ImportError:
-    import json
-
 import importlib
 import logging
 import subprocess
@@ -17,6 +12,7 @@ import yaml  # type: ignore
 from dotenv import load_dotenv  # type: ignore[import-not-found]
 
 from leropa import parser
+from leropa.json_utils import json_dumps
 from leropa.xlsx import write_workbook
 
 try:
@@ -115,7 +111,7 @@ def convert(
             final_path = final_path / f"{ver_id}{extensions[output_format]}"
 
     if output_format == "json":
-        content = json.dumps(doc, ensure_ascii=False)
+        content = json_dumps(doc)
         if final_path:
             final_path.write_text(content, encoding="utf-8")
         else:

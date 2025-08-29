@@ -75,11 +75,6 @@ import subprocess
 import uuid
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
-try:
-    import orjson as json
-except ImportError:
-    import json  # type: ignore
-
 import requests
 import yaml  # type: ignore[import]
 from qdrant_client import QdrantClient
@@ -94,7 +89,10 @@ from qdrant_client.models import (
 )
 from tqdm import tqdm  # type: ignore
 
+from leropa.json_utils import json_loads
+
 logger = logging.getLogger(__name__)
+
 
 # Optional re-ranker (CPU ok). If unavailable, pipeline still works.
 CrossEncoder: Any = None  # ensure bound for type checkers and runtime
@@ -241,12 +239,12 @@ def _read_json_file(path: str) -> List[Dict[str, Any]]:
                 line = line.strip()
                 if not line:
                     continue
-                obj = json.loads(line)
+                obj = json_loads(line)
                 out.append(obj)
         return out
 
     with open(path, "rb") as f:
-        data = json.loads(f.read())
+        data = json_loads(f.read())
 
     return _extract_articles(data)
 
@@ -376,7 +374,7 @@ def _ollama_chat(system: str, user: str, stream: bool = False) -> str:
         try:
             # Ollama streams json lines like:
             #     {"message":{"content":"..."}, "done":false}
-            j = json.loads(line.decode("utf-8"))
+            j = json_loads(line.decode("utf-8"))
             msg = j.get("message", {}).get("content")
             if msg:
                 out.append(msg)

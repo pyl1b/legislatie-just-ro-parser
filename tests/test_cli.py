@@ -1,11 +1,7 @@
 """Tests for the command line interface."""
 
-try:
-    import orjson as json  # type: ignore[import-not-found]
-except ImportError:
-    import json
-
 import importlib
+import json
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
