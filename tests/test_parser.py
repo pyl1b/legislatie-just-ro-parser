@@ -144,6 +144,16 @@ SAMPLE_HTML_WITH_NOTES = """
 """
 
 
+SAMPLE_HTML_NO_PREFIX = """
+<span class="S_ART" id="id_art_np">
+    <span class="S_ART_TTL" id="id_art_np_ttl">NoPrefix</span>
+    <span class="S_ART_BDY" id="id_art_np_bdy">
+        <span class="S_PAR" id="id_par_np">Paragraph.</span>
+    </span>
+</span>
+"""
+
+
 SAMPLE_HTML_WITH_LINK = (
     '<span class="S_ART" id="id_art_link">'
     '    <span class="S_ART_TTL" id="id_art_link_ttl">Articolul Link</span>'
@@ -362,6 +372,7 @@ def test_parse_html_extracts_articles() -> None:
     assert len(doc["articles"]) == 1
     article = doc["articles"][0]
     assert article["article_id"] == "id_art1"
+    assert article["label"] == "1"
     assert len(article["paragraphs"]) == 2
     assert article["paragraphs"][0]["text"] == "First paragraph."
     assert article["paragraphs"][0]["label"] is None
@@ -376,6 +387,7 @@ def test_parse_html_extracts_articles() -> None:
 def test_labels_from_body_text() -> None:
     doc = parser.parse_html(SAMPLE_HTML_BODY_LABEL, "456")
     article = doc["articles"][0]
+    assert article["label"] == "2"
     paragraph = article["paragraphs"][0]
     sub_a = paragraph["subparagraphs"][0]
     assert sub_a["label"] == "a)"
@@ -388,6 +400,7 @@ def test_labels_from_body_text() -> None:
 def test_s_lit_paragraphs() -> None:
     doc = parser.parse_html(SAMPLE_HTML_LIT_PARAGRAPHS, "101")
     article = doc["articles"][0]
+    assert article["label"] == "LIT"
     paragraphs = article["paragraphs"]
     assert len(paragraphs) == 2
     first_par = paragraphs[0]
@@ -401,6 +414,12 @@ def test_s_lit_paragraphs() -> None:
     assert second_par["text"] == "Second paragraph."
 
 
+def test_article_label_without_prefix() -> None:
+    doc = parser.parse_html(SAMPLE_HTML_NO_PREFIX, "102")
+    article = doc["articles"][0]
+    assert article["label"] == "NoPrefix"
+
+
 def test_metadata_extraction() -> None:
     doc = parser.parse_html(SAMPLE_HTML_WITH_META, "789")
     info = doc["document"]
@@ -412,6 +431,7 @@ def test_metadata_extraction() -> None:
 def test_parse_notes() -> None:
     doc = parser.parse_html(SAMPLE_HTML_WITH_NOTES, "999")
     article = doc["articles"][0]
+    assert article["label"] == "3"
     paragraph = article["paragraphs"][0]
 
     assert paragraph["text"].strip() == "Paragraph text."

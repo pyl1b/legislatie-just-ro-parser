@@ -13,12 +13,14 @@ class Article:
 
     Attributes:
         article_id: Identifier for the article element in the source HTML.
+        label: Article label such as "1".
         full_text: Full text content of the article.
         paragraphs: Ordered collection of paragraphs within the article.
         notes: Notes attached to the article body.
     """
 
     article_id: str
+    label: str
     full_text: str
     paragraphs: ParagraphList = field(factory=list, repr=False)
     notes: NoteList = field(factory=list, repr=False)

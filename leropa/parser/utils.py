@@ -363,6 +363,11 @@ def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
     # Unique identifier of the article.
     article_id = art_tag.get("id", "")
 
+    # Visible label of the article without the "Articolul" prefix.
+    title_tag = art_tag.find("span", class_="S_ART_TTL")
+    label = title_tag.get_text(strip=True) if title_tag else ""
+    label = re.sub(r"^Articolul\s+", "", label)
+
     # Body container that holds the paragraphs and notes.
     body_tag = art_tag.find("span", class_="S_ART_BDY")
     if body_tag is None:
@@ -383,6 +388,7 @@ def _parse_article(art_tag: Any) -> Article | None:  # noqa: ANN401
 
     return Article(
         article_id=article_id,
+        label=label,
         full_text=full_text,
         paragraphs=paragraphs,
         notes=notes,

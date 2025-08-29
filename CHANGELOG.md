@@ -21,3 +21,5 @@
   parent-child identifiers and Excel tables.
 - Detect numeric section titles, assigning a ``level`` and nesting child
   sections under their parents.
+- Include article labels parsed from ``S_ART_TTL`` without the ``Articolul``
+  prefix.
