@@ -186,7 +186,7 @@ def list_models() -> None:
 @click.option(
     "--port",
     type=int,
-    default=8000,
+    default=8123,
     show_default=True,
     help="Server port.",
 )

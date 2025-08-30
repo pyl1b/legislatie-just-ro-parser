@@ -23,6 +23,28 @@
         "clear": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "leropa: web",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "windows": {
+        "command": "${workspaceFolder}\\venv\\Scripts\\python.exe"
+      },
+      "args": [
+        "-m",
+        "leropa",
+        "web"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": []
     }
   ],
   "inputs": [
