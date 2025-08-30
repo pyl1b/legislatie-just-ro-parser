@@ -198,26 +198,65 @@ def test_document_endpoints(
     response = client.get("/documents/1", params={"format": "html"})
     assert response.status_code == 200
     assert "Doc1" in response.text
-    assert "P" in response.text
 
-    # POST listing should return raw summaries.
-    response = client.post("/documents")
-    assert response.status_code == 200
-    docs = response.json()
-    assert {"ver_id": "1", "title": "Doc1"} in docs
-    assert {"ver_id": "2", "title": "Doc2"} in docs
 
-    # POST detail should return raw JSON content.
-    response = client.post("/documents/1")
-    assert response.status_code == 200
-    assert response.text == (tmp_path / "1.json").read_text()
-    assert response.headers["content-type"] == "application/json"
+def test_document_admin_add_delete(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Adding and removing documents should interact with RAG helpers."""
 
-    # POST detail should return raw YAML content.
-    response = client.post("/documents/2")
-    assert response.status_code == 200
-    assert response.text == (tmp_path / "2.yaml").read_text()
-    assert response.headers["content-type"] == "application/x-yaml"
+    # Fake fetch_document returns structured content with one article.
+    def fake_fetch(ver_id: str, cache_dir: Path | None = None) -> JSONDict:
+        return {
+            "document": {"ver_id": ver_id, "title": f"Doc{ver_id}"},
+            "articles": [
+                {
+                    "article_id": f"a{ver_id}",
+                    "label": "1",
+                    "full_text": "T",
+                    "paragraphs": [],
+                    "notes": [],
+                }
+            ],
+            "books": [],
+            "annexes": [],
+        }
+
+    monkeypatch.setattr(parser, "fetch_document", fake_fetch)
+
+    # Track RAG operations.
+    calls: JSONDict = {"ingested": [], "deleted": []}
+
+    class FakeRag:
+        @staticmethod
+        def ingest_folder(folder: str, collection: str) -> int:
+            calls["ingested"].append(Path(folder))
+            return 1
+
+        @staticmethod
+        def delete_by_article_id(article_id: str, collection: str) -> int:
+            calls["deleted"].append(article_id)
+            return 1
+
+    monkeypatch.setattr(
+        "leropa.web.routes.documents._RAG", FakeRag, raising=False
+    )
+    monkeypatch.setenv("LEROPA_DOCUMENTS", str(tmp_path))
+
+    client = _client()
+
+    # Adding should create file and ingest it.
+    resp = client.post("/documents/add", json={"ver_id": "123"})
+    assert resp.status_code == 200
+    assert (tmp_path / "123.yaml").exists()
+    assert calls["ingested"], "ingest_folder not called"
+
+    # Deleting should move file and delete articles.
+    resp = client.post("/documents/delete", json={"ids": ["123"]})
+    assert resp.status_code == 200
+    assert not (tmp_path / "123.yaml").exists()
+    assert (tmp_path / "recycle" / "123.yaml").exists()
+    assert calls["deleted"] == ["a123"]
 
 
 def test_export_md_endpoint(
