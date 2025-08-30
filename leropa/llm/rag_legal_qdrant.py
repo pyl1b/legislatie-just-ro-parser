@@ -74,7 +74,7 @@ import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
 
 import requests
 import yaml  # type: ignore[import]
@@ -91,6 +91,7 @@ from qdrant_client.models import (
 from tqdm import tqdm  # type: ignore
 
 from leropa.json_utils import json_loads
+from leropa.web.utils import DOCUMENTS_DIR
 
 # Optional re-ranker (CPU ok). If unavailable, pipeline still works.
 CrossEncoder: Any = None  # ensure bound for type checkers and runtime
@@ -116,8 +117,9 @@ OLLAMA_CHAT_URL = os.environ.get(
 
 EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")  # 768 dims
 EMBED_DIMS = int(os.environ.get("EMBED_DIMS", "768"))
+GEN_MODEL = os.environ.get("GEN_MODEL", "mistral:latest")
 # GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.1:8b")
-GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.2:3b")
+# GEN_MODEL = os.environ.get("GEN_MODEL", "llama3.2:3b")
 
 # If articles are long, you may wish to sub-chunk. Set to 0 to disable.
 MAX_TOKENS_PER_CHUNK = int(os.environ.get("MAX_TOKENS_PER_CHUNK", "1000"))
@@ -127,6 +129,9 @@ OVERLAP_TOKENS = int(os.environ.get("OVERLAP_TOKENS", "200"))
 RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-base")
 TOP_K_RETRIEVE = int(os.environ.get("TOP_K_RETRIEVE", "24"))
 TOP_K_CONTEXT = int(os.environ.get("TOP_K_CONTEXT", "8"))
+
+LANGUAGE: Literal["ro", "en"] = os.environ.get("DLG_LNG", "ro")  # type: ignore
+assert LANGUAGE in ["ro", "en"]
 
 # Tokenizer for chunking
 try:
@@ -595,21 +600,53 @@ def ask_with_context(
         ctx_blocks.append(f"[{i}] Source: {src}\n{c['text']}")
     context = "\n\n".join(ctx_blocks)
 
-    system = (
-        "You are a precise legal research assistant. "
-        "Use ONLY the supplied CONTEXT to answer the user's question. "
-        "Cite sources using bracketed numbers like [1], [2] "
-        "that correspond to the context blocks. "
-        "If the answer is not in the context, say you don't know."
-    )
-    user = (
-        f"QUESTION:\n{question}\n\nCONTEXT:\n{context}\n\n"
-        "Answer with citations like [1], [2]."
-    )
+    if LANGUAGE == "en":
+        system = (
+            "You are a precise legal research assistant. "
+            "Use ONLY the supplied CONTEXT to answer the user's question. "
+            "Cite sources using bracketed numbers like [1], [2] "
+            "that correspond to the context blocks. "
+            "If the answer is not in the context, say you don't know."
+        )
+        user = (
+            f"QUESTION:\n{question}\n\nCONTEXT:\n{context}\n\n"
+            "Answer with citations like [1], [2]."
+        )
+    elif LANGUAGE == "ro":
+        system = (
+            "Esti un asistent legal exact care utilizează doar CONTEXTUL "
+            "furnizat pentru a răspunde la întrebarea utilizatorului. "
+            "Citează sursele folosind numerele dintre paranteze, cum ar fi "
+            "[1], [2], care corespund blocurilor de context. "
+            "Dacă răspunsul nu este în context, spune că nu ştii."
+        )
+        user = (
+            f"ÎNTREBARE:\n{question}\n\nCONTEXT:\n{context}\n\n"
+            "Răspunde cu citările ca [1], [2]."
+        )
+    else:
+        raise ValueError(f"Invalid language: {LANGUAGE}")
 
     answer_text = _ollama_chat(system, user, stream=False)
 
-    return {"text": answer_text, "contexts": contexts}
+    result_ctx_list = []
+    for idx, ctx in enumerate(contexts, start=1):
+        rel_file = str(Path(ctx["source_file"]).relative_to(DOCUMENTS_DIR))
+        file_id = os.path.splitext(os.path.basename(rel_file))[0]
+
+        result_ctx_list.append(
+            {
+                "ctx_key": f"[{idx}]",
+                "text": ctx["text"],
+                "article_id": ctx["article_id"],
+                "label": ctx["label"],
+                "file_id": file_id,
+                "source_file": rel_file,
+                "score": ctx["score"],
+                "rerank": ctx["rerank"],
+            }
+        )
+    return {"text": answer_text, "contexts": result_ctx_list}
 
 
 def delete_by_article_id(article_id: str, collection: str) -> int:

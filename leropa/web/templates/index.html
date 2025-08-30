@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Leropa RAG Demo</h1>
+<h1>LeRoPa RAG Demo</h1>
 <p><a href="/documents?format=html">Documents</a></p>
 
 <div class="mb-4">
@@ -9,7 +9,8 @@
     <input type="text" id="question" name="question" class="form-control" placeholder="Your question" aria-label="Question" />
     <button class="btn btn-primary" type="submit">Ask</button>
   </form>
-  <textarea id="answer" class="form-control mt-3" rows="4" readonly></textarea>
+  <!-- textarea id="answer" class="form-control mt-3" rows="4" readonly></textarea -->
+  <div id="answer" class="form-control mt-3" ></div>
   <ul id="citations" class="list-group mt-3"></ul>
 </div>
 
@@ -44,11 +45,15 @@ askForm.addEventListener('submit', async (e) => {
   // Read the question from the input field.
 
   const question = document.getElementById('question').value;
+  if (question.trim() === '') {
+    showToast('Please enter a question');
+    return;
+  }
 
   try {
     showProgress(true);
-    // Perform a POST request to the ask endpoint.
 
+    // Perform a POST request to the ask endpoint.
     const resp = await fetch('/rag/ask', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -56,39 +61,50 @@ askForm.addEventListener('submit', async (e) => {
     });
 
     // Throw an error if the response is not successful.
-
     if (!resp.ok) {
       const errText = await resp.text();
       throw new Error(errText || resp.statusText);
     }
 
     // Parse the JSON answer and display it to the user.
-
     const data = await resp.json();
 
-    // Populate the textarea with the answer text.
-
-    document.getElementById('answer').value = data.text || '';
-
     // Clear existing citation list before adding new items.
-
     const citationList = document.getElementById('citations');
     citationList.innerHTML = '';
 
     // Add each context as a citation linking to the document details page.
-
+    // ctx_map maps context keys like [1], [2], ... to the context objects.
+    const ctx_map = {};
     (data.contexts || []).forEach((ctx, idx) => {
       const src = ctx.source_file || '';
-      const verId = src.split('/').pop().split('.')[0];
+      const verId = ctx.file_id;
       const url = `/documents/${verId}?format=html#${ctx.article_id}`;
       const li = document.createElement('li');
       li.className = 'list-group-item';
       const a = document.createElement('a');
       a.href = url;
+      a.title = src;
       a.textContent = `[${idx + 1}] Art. ${ctx.label}`;
+      a.target = '_blank';
       li.appendChild(a);
       citationList.appendChild(li);
+      ctx_map[ctx.ctx_key] = ctx;
     });
+
+    // Populate the textarea with the answer text.
+    const answerEl = document.getElementById('answer');
+    answerEl.innerHTML = (data.text || '').replace(/\[\d+\]/g, (match) => {
+      const ctx = ctx_map[match];
+      if (!ctx) {
+        return match;
+      }
+      const url = `/documents/${ctx.file_id}?format=html#${ctx.article_id}`;
+      const title = `${ctx.source_file || ''} - Art. ${ctx.label}`;
+      return `<a href="${url}" title="${title}" target="_blank">${match}</a>`;
+    });
+
+    document.getElementById('answer').value = data.text || '';
   } catch (err) {
     // Show a toast notification for any errors.
 
