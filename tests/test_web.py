@@ -62,7 +62,9 @@ def test_chat_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Replace the module loader with our stub implementation.
     monkeypatch.setattr(
-        "leropa.web._import_llm_module", lambda name: FakeModule, raising=False
+        "leropa.web.routes.chat._import_llm_module",
+        lambda name: FakeModule,
+        raising=False,
     )
 
     client = _client()
@@ -77,7 +79,9 @@ def test_models_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     """/models should list available model names."""
 
     # Provide a deterministic set of models for the response.
-    monkeypatch.setattr("leropa.web.available_models", lambda: ["m1", "m2"])
+    monkeypatch.setattr(
+        "leropa.web.routes.models.available_models", lambda: ["m1", "m2"]
+    )
 
     client = _client()
     response = client.get("/models")
@@ -88,7 +92,9 @@ def test_models_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_chat_form_lists_models(monkeypatch: pytest.MonkeyPatch) -> None:
     """The chat form should offer model choices."""
 
-    monkeypatch.setattr("leropa.web.available_models", lambda: ["m1", "m2"])
+    monkeypatch.setattr(
+        "leropa.web.routes.root.available_models", lambda: ["m1", "m2"]
+    )
     client = _client()
     response = client.get("/")
     assert response.status_code == 200
@@ -115,9 +121,11 @@ def test_chat_endpoint_uses_selected_model(
         return FakeModule
 
     monkeypatch.setattr(
-        "leropa.web._import_llm_module", fake_loader, raising=False
+        "leropa.web.routes.chat._import_llm_module", fake_loader, raising=False
     )
-    monkeypatch.setattr("leropa.web.available_models", lambda: ["x"])
+    monkeypatch.setattr(
+        "leropa.web.routes.chat.available_models", lambda: ["x"]
+    )
 
     client = _client()
     response = client.post("/chat", data={"question": "Hi", "model": "x"})
@@ -191,3 +199,125 @@ def test_document_endpoints(
     data = response.json()
     assert "full_text" not in data["articles"][0]
     assert data["articles"][0]["paragraphs"][0]["text"] == "P"
+
+
+def test_export_md_endpoint(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Export endpoint should report counts from the exporter module."""
+
+    class FakeModule:
+        @staticmethod
+        def export_folder(
+            input_dir: str,
+            output_dir: str,
+            max_tokens: int,
+            overlap_tokens: int,
+            title_template: str,
+            body_heading: str,
+            ext: str,
+        ) -> tuple[int, int]:
+            return (1, 2)
+
+    # Replace the exporter loader with our fake module.
+    monkeypatch.setattr(
+        "leropa.web.routes.export_md._import_llm_module",
+        lambda name: FakeModule,
+        raising=False,
+    )
+
+    client = _client()
+    response = client.get(
+        "/export-md",
+        params={"input_dir": str(tmp_path), "output_dir": str(tmp_path)},
+    )
+    assert response.status_code == 200
+    assert response.json() == {
+        "articles": 1,
+        "files": 2,
+        "output_dir": str(tmp_path),
+    }
+
+
+def test_rag_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    """RAG routes should delegate to the imported module."""
+
+    class FakeRag:
+        @staticmethod
+        def recreate_collection(collection: str, vector_size: int) -> None:
+            pass
+
+        @staticmethod
+        def ingest_folder(
+            folder: str,
+            collection: str,
+            batch_size: int,
+            chunk_tokens: int,
+            overlap_tokens: int,
+        ) -> int:
+            return 42
+
+        @staticmethod
+        def search(
+            query: str,
+            collection: str,
+            top_k: int,
+            label: str | None = None,
+        ) -> list[dict[str, str]]:
+            return [{"text": "hit"}]
+
+        @staticmethod
+        def ask_with_context(
+            question: str,
+            collection: str,
+            top_k: int,
+            final_k: int,
+            use_reranker: bool,
+        ) -> dict[str, object]:
+            return {"text": "ans", "contexts": []}
+
+        @staticmethod
+        def delete_by_article_id(article_id: str, collection: str) -> int:
+            return 3
+
+        @staticmethod
+        def start_qdrant_docker(
+            name: str, port: int, volume: str, image: str
+        ) -> bool:
+            return True
+
+    modules = [
+        "leropa.web.routes.rag_recreate",
+        "leropa.web.routes.rag_ingest",
+        "leropa.web.routes.rag_search",
+        "leropa.web.routes.rag_ask",
+        "leropa.web.routes.rag_delete",
+        "leropa.web.routes.rag_start_qdrant",
+    ]
+    for mod in modules:
+        monkeypatch.setattr(
+            mod, "_import_llm_module", lambda name, m=mod: FakeRag
+        )
+
+    client = _client()
+
+    assert client.get("/rag/recreate").json()["status"] == "ready"
+    assert (
+        client.get("/rag/ingest", params={"folder": "."}).json()["chunks"]
+        == 42
+    )
+    assert (
+        client.get("/rag/search", params={"query": "q"}).json()[0]["text"]
+        == "hit"
+    )
+    assert (
+        client.get("/rag/ask", params={"question": "q"}).json()["text"]
+        == "ans"
+    )
+    assert (
+        client.delete("/rag/delete", params={"article_id": "a"}).json()[
+            "deleted"
+        ]
+        == 3
+    )
+    assert client.get("/rag/start-qdrant").json()["started"] is True
