@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml  # type: ignore[import-untyped]
+from fastapi.templating import Jinja2Templates  # type: ignore
 
 from leropa.json_utils import json_loads
 
@@ -18,6 +19,12 @@ DocumentSummaryList = list[DocumentSummary]
 DOCUMENTS_DIR = Path(
     os.environ.get("LEROPA_DOCUMENTS", Path.home() / ".leropa" / "documents")
 )
+
+# Location of Jinja2 templates used by the web application.
+TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
+
+# Jinja2 template renderer shared by route handlers.
+templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 
 def _document_files() -> list[Path]:
@@ -70,33 +77,3 @@ def _strip_full_text(doc: JSONDict) -> JSONDict:
     for article in doc.get("articles", []):
         article.pop("full_text", None)
     return doc
-
-
-def _render_document(doc: JSONDict) -> str:
-    """Render a document structure into basic HTML.
-
-    Args:
-        doc: Parsed document data.
-
-    Returns:
-        HTML string representing the document.
-    """
-
-    parts = [f"<h1>{doc['document'].get('title', '')}</h1>"]
-
-    # Render each article with its paragraphs and subparagraphs.
-    for article in doc.get("articles", []):
-        label = article.get("label", article.get("article_id", ""))
-        parts.append(f"<h2>Art. {label}</h2>")
-
-        for paragraph in article.get("paragraphs", []):
-            par_label = paragraph.get("label", "")
-            text = paragraph.get("text", "")
-            parts.append(f"<p>{par_label} {text}</p>")
-
-            # Include subparagraphs when present.
-            for sub in paragraph.get("subparagraphs", []):
-                sub_label = sub.get("label", "")
-                sub_text = sub.get("text", "")
-                parts.append(f"<p>{sub_label} {sub_text}</p>")
-    return "".join(parts)
