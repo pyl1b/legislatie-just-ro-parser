@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Any, Dict
 
 import pytest
-from fastapi.testclient import TestClient
+
+pytest.importorskip("fastapi.testclient")
+
+from fastapi.testclient import TestClient  # type: ignore[import-not-found]
 
 from leropa import parser
 from leropa.web import app
@@ -98,13 +101,13 @@ def test_chat_endpoint_uses_selected_model(
     class FakeModule:
         @staticmethod
         def ask_with_context(
-            question: str, collection: str, **_: Any
+            question: str, collection: str, **_: object
         ) -> JSONDict:
             return {"text": f"Echo: {question}", "contexts": []}
 
     imported: dict[str, str] = {}
 
-    def fake_loader(name: str) -> Any:
+    def fake_loader(name: str) -> type[FakeModule]:
         imported["name"] = name
         return FakeModule
 

@@ -7,6 +7,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
+import pytest
 import yaml  # type: ignore[import-untyped]
 from click.testing import CliRunner
 from openpyxl import load_workbook  # type: ignore[import-untyped]
@@ -413,7 +414,7 @@ def test_rag_recreate_invokes_module() -> None:
     assert called["vector_size"] == 10
 
 
-def test_models_command_lists_models(monkeypatch) -> None:
+def test_models_command_lists_models(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure the models command prints available model names."""
 
     # Return a predictable list of models.
@@ -425,7 +426,7 @@ def test_models_command_lists_models(monkeypatch) -> None:
     assert "m2" in result.output
 
 
-def test_rag_respects_model_option(monkeypatch) -> None:
+def test_rag_respects_model_option(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure rag commands import the user-selected model."""
 
     loaded: dict[str, str] = {}

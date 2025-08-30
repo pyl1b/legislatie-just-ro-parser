@@ -13,8 +13,8 @@ from dotenv import load_dotenv  # type: ignore[import-not-found]
 
 from leropa import parser
 from leropa.json_utils import json_dumps
-from leropa.xlsx import write_workbook
 from leropa.llm import available_models
+from leropa.xlsx import write_workbook
 
 try:
     __version__ = version("leropa")
