@@ -5,12 +5,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 import yaml  # type: ignore[import-untyped]
 from fastapi import (  # type: ignore[import-not-found]
     BackgroundTasks,
     FastAPI,
     Form,
+    HTTPException,
     Query,
     Response,
 )
@@ -23,8 +25,102 @@ from fastapi.responses import (  # type: ignore[import-not-found]
 
 from leropa import parser
 from leropa.cli import _import_llm_module
+from leropa.json_utils import json_loads
 from leropa.llm import available_models
 from leropa.xlsx import write_workbook
+
+JSONDict = dict[str, Any]
+DocumentSummary = dict[str, str | None]
+DocumentSummaryList = list[DocumentSummary]
+
+# Directory containing structured document files.
+DOCUMENTS_DIR = Path(
+    os.environ.get("LEROPA_DOCUMENTS", Path.home() / ".leropa" / "documents")
+)
+
+
+def _document_files() -> list[Path]:
+    """Return available document files from ``DOCUMENTS_DIR``.
+
+    Returns:
+        Paths pointing to JSON or YAML files. Nonexistent directories
+        yield an empty list.
+    """
+
+    # Return early when directory does not exist.
+    if not DOCUMENTS_DIR.exists():
+        return []
+
+    # Collect files with supported extensions.
+    files: list[Path] = []
+    for pattern in ("*.json", "*.yaml", "*.yml"):
+        files.extend(DOCUMENTS_DIR.glob(pattern))
+    return files
+
+
+def _load_document_file(path: Path) -> JSONDict:
+    """Load a structured document from ``path``.
+
+    Args:
+        path: Location of the JSON or YAML file.
+
+    Returns:
+        Parsed document dictionary.
+    """
+
+    text = path.read_text(encoding="utf-8")
+
+    # Decode according to file extension.
+    if path.suffix == ".json":
+        return json_loads(text)  # type: ignore[return-value]
+    return yaml.safe_load(text)
+
+
+def _strip_full_text(doc: JSONDict) -> JSONDict:
+    """Remove ``full_text`` from articles to expose granular content.
+
+    Args:
+        doc: Document structure to mutate.
+
+    Returns:
+        The same document with article ``full_text`` fields removed.
+    """
+
+    for article in doc.get("articles", []):
+        article.pop("full_text", None)
+    return doc
+
+
+def _render_document(doc: JSONDict) -> str:
+    """Render a document structure into basic HTML.
+
+    Args:
+        doc: Parsed document data.
+
+    Returns:
+        HTML string representing the document.
+    """
+
+    parts = [f"<h1>{doc['document'].get('title', '')}</h1>"]
+
+    # Render each article with its paragraphs and subparagraphs.
+    for article in doc.get("articles", []):
+        label = article.get("label", article.get("article_id", ""))
+        parts.append(f"<h2>Art. {label}</h2>")
+
+        for paragraph in article.get("paragraphs", []):
+            par_label = paragraph.get("label", "")
+            text = paragraph.get("text", "")
+            parts.append(f"<p>{par_label} {text}</p>")
+
+            # Include subparagraphs when present.
+            for sub in paragraph.get("subparagraphs", []):
+                sub_label = sub.get("label", "")
+                sub_text = sub.get("text", "")
+                parts.append(f"<p>{sub_label} {sub_text}</p>")
+
+    return "".join(parts)
+
 
 app = FastAPI()
 
@@ -83,6 +179,70 @@ async def chat(
         "<button type='submit'>Ask</button>"
         "</form>"
     )
+
+
+@app.get("/documents")
+async def list_documents(
+    format: str = Query(default="json", enum=["json", "html"]),
+) -> Response:
+    """List structured documents available on the server.
+
+    Args:
+        format: Desired response format.
+
+    Returns:
+        Either a JSON list or an HTML page with document links.
+    """
+
+    # Gather summaries for all known documents.
+    summaries: DocumentSummaryList = []
+    for path in _document_files():
+        data = _load_document_file(path)
+        info = data.get("document", {})
+        summaries.append(
+            {"ver_id": info.get("ver_id"), "title": info.get("title")}
+        )
+
+    # Render as HTML when requested.
+    if format == "html":
+        template = (
+            "<li><a href='/documents/{ver}?format=html'>{title}</a></li>"
+        )
+        items = "".join(
+            template.format(ver=s["ver_id"], title=s["title"])
+            for s in summaries
+        )
+        return HTMLResponse(f"<ul>{items}</ul>")
+
+    return JSONResponse(summaries)
+
+
+@app.get("/documents/{ver_id}")
+async def get_document(
+    ver_id: str, format: str = Query(default="json", enum=["json", "html"])
+) -> Response:
+    """Return a specific document by version identifier.
+
+    Args:
+        ver_id: Document version identifier.
+        format: Desired response format.
+
+    Returns:
+        Document structure without ``full_text`` fields or its HTML rendering.
+    """
+
+    # Locate the document file matching ``ver_id``.
+    file_path = next((p for p in _document_files() if p.stem == ver_id), None)
+    if file_path is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    doc = _strip_full_text(_load_document_file(file_path))
+
+    # Render as HTML when requested.
+    if format == "html":
+        return HTMLResponse(_render_document(doc))
+
+    return JSONResponse(doc)
 
 
 @app.get("/convert")

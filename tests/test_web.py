@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, cast
 
 import pytest
+import yaml  # type: ignore[import-untyped]
 
 pytest.importorskip("fastapi.testclient")
 
 from fastapi.testclient import TestClient  # type: ignore[import-not-found]
 
 from leropa import parser
+from leropa.json_utils import json_dumps
 from leropa.web import app
 
 JSONDict = Dict[str, Any]
@@ -120,3 +123,71 @@ def test_chat_endpoint_uses_selected_model(
     response = client.post("/chat", data={"question": "Hi", "model": "x"})
     assert response.status_code == 200
     assert imported["name"] == "x"
+
+
+def test_document_endpoints(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """List documents and fetch their structured content."""
+
+    # Build two sample documents, one JSON and one YAML.
+    doc1 = {
+        "document": {
+            "source": "s",
+            "ver_id": "1",
+            "title": "Doc1",
+            "description": "",
+            "keywords": "",
+            "history": [],
+            "prev_ver": None,
+            "next_ver": None,
+        },
+        "articles": [
+            {
+                "article_id": "a1",
+                "label": "1",
+                "full_text": "P",
+                "paragraphs": [
+                    {
+                        "par_id": "p1",
+                        "text": "P",
+                        "label": None,
+                        "subparagraphs": [],
+                        "notes": [],
+                    }
+                ],
+                "notes": [],
+            }
+        ],
+        "books": [],
+        "annexes": [],
+    }
+    doc2 = cast(JSONDict, deepcopy(doc1))
+    doc2_doc = cast(JSONDict, doc2["document"])
+    doc2_doc["ver_id"] = "2"
+    doc2_doc["title"] = "Doc2"
+
+    # Write documents to disk in different formats.
+    (tmp_path / "1.json").write_text(json_dumps(doc1))
+    (tmp_path / "2.yaml").write_text(
+        yaml.safe_dump(doc2, allow_unicode=True, sort_keys=False)
+    )
+
+    # Point the application to the temporary directory.
+    monkeypatch.setenv("LEROPA_DOCUMENTS", str(tmp_path))
+
+    client = _client()
+
+    # Listing should include both documents.
+    response = client.get("/documents")
+    assert response.status_code == 200
+    docs = response.json()
+    assert {"ver_id": "1", "title": "Doc1"} in docs
+    assert {"ver_id": "2", "title": "Doc2"} in docs
+
+    # Fetching a document should strip ``full_text``.
+    response = client.get("/documents/1")
+    assert response.status_code == 200
+    data = response.json()
+    assert "full_text" not in data["articles"][0]
+    assert data["articles"][0]["paragraphs"][0]["text"] == "P"
