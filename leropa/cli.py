@@ -14,6 +14,7 @@ from dotenv import load_dotenv  # type: ignore[import-not-found]
 from leropa import parser
 from leropa.json_utils import json_dumps
 from leropa.xlsx import write_workbook
+from leropa.llm import available_models
 
 try:
     __version__ = version("leropa")
@@ -166,6 +167,15 @@ def _import_llm_module(module: str) -> ModuleType:
         raise click.ClickException("Missing LLM dependencies") from exc
 
 
+@cli.command("models")
+def list_models() -> None:
+    """List available LLM model modules."""
+
+    # Output one model name per line for the user to choose from.
+    for name in available_models():
+        click.echo(name)
+
+
 @cli.command("export-md")
 @click.argument("input_dir")
 @click.argument("output_dir")
@@ -202,6 +212,12 @@ def _import_llm_module(module: str) -> ModuleType:
     show_default=True,
     help="Heading shown before the article text.",
 )
+@click.option(
+    "--model",
+    default="export_legal_articles_to_md",
+    show_default=True,
+    help="Exporter module to use.",
+)
 def export_md(
     input_dir: str,
     output_dir: str,
@@ -210,6 +226,7 @@ def export_md(
     ext: str = ".md",
     title_template: str = "Article {label} (ID: {article_id})",
     body_heading: str = "TEXT",
+    model: str = "export_legal_articles_to_md",
 ) -> None:
     """Export legal JSON articles to chunked Markdown files.
 
@@ -219,7 +236,7 @@ def export_md(
     """
 
     # Import the exporter module, aborting if dependencies are missing.
-    mod = _import_llm_module("export_legal_articles_to_md")
+    mod = _import_llm_module(model)
 
     # Execute the export operation and report the results to the user.
     art_count, file_count = mod.export_folder(
@@ -243,13 +260,20 @@ def export_md(
     show_default=True,
     help="Qdrant collection name.",
 )
+@click.option(
+    "--model",
+    default="rag_legal_qdrant",
+    show_default=True,
+    help="RAG module to use.",
+)
 @click.pass_context
-def rag(ctx: click.Context, collection: str) -> None:
+def rag(ctx: click.Context, collection: str, model: str) -> None:
     """Interact with the local Qdrant/Ollama RAG pipeline."""
 
     # Store the collection name for the subcommands.
     ctx.ensure_object(dict)
     ctx.obj["collection"] = collection
+    ctx.obj["model"] = model
 
 
 @rag.command()
@@ -265,7 +289,7 @@ def recreate(ctx: click.Context, dims: int) -> None:
     """(Re)create the configured Qdrant collection."""
 
     # Import the RAG module and trigger the collection creation.
-    mod = _import_llm_module("rag_legal_qdrant")
+    mod = _import_llm_module(ctx.obj["model"])
     mod.recreate_collection(ctx.obj["collection"], vector_size=dims)
     click.echo(f"[INFO] Collection '{ctx.obj['collection']}' ready.")
 
@@ -308,7 +332,7 @@ def ingest(
     """
 
     # Import the RAG module and process the folder.
-    mod = _import_llm_module("rag_legal_qdrant")
+    mod = _import_llm_module(ctx.obj["model"])
     total_ingested = mod.ingest_folder(
         folder,
         collection=ctx.obj["collection"],
@@ -343,7 +367,7 @@ def search(
     """
 
     # Import the RAG module and perform the search.
-    mod = _import_llm_module("rag_legal_qdrant")
+    mod = _import_llm_module(ctx.obj["model"])
     hits = mod.search(
         query,
         collection=ctx.obj["collection"],
@@ -391,7 +415,7 @@ def ask(
     """
 
     # Import the RAG module and get the answer with context.
-    mod = _import_llm_module("rag_legal_qdrant")
+    mod = _import_llm_module(ctx.obj["model"])
     answer = mod.ask_with_context(
         question,
         collection=ctx.obj["collection"],
@@ -422,7 +446,7 @@ def delete(ctx: click.Context, article_id: str) -> None:
     """
 
     # Import the RAG module and perform the deletion.
-    mod = _import_llm_module("rag_legal_qdrant")
+    mod = _import_llm_module(ctx.obj["model"])
     total_deleted = mod.delete_by_article_id(
         article_id, collection=ctx.obj["collection"]
     )
@@ -457,7 +481,9 @@ def delete(ctx: click.Context, article_id: str) -> None:
     show_default=True,
     help="Docker image to run.",
 )
+@click.pass_context
 def start_qdrant(
+    ctx: click.Context,
     name: str = "qdrant",
     port: int = 6333,
     volume: str = "qdrant_storage",
@@ -466,7 +492,7 @@ def start_qdrant(
     """Attempt to start Qdrant via Docker."""
 
     # Import the RAG module and start the Docker container.
-    mod = _import_llm_module("rag_legal_qdrant")
+    mod = _import_llm_module(ctx.obj["model"])
     result = mod.start_qdrant_docker(
         name=name, port=port, volume=volume, image=image
     )

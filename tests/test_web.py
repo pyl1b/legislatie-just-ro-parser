@@ -65,3 +65,55 @@ def test_chat_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     # Verify that the answer from the stub is present in the response.
     assert response.status_code == 200
     assert "Echo: Hi" in response.text
+
+
+def test_models_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    """/models should list available model names."""
+
+    # Provide a deterministic set of models for the response.
+    monkeypatch.setattr("leropa.web.available_models", lambda: ["m1", "m2"])
+
+    client = _client()
+    response = client.get("/models")
+    assert response.status_code == 200
+    assert response.json() == ["m1", "m2"]
+
+
+def test_chat_form_lists_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The chat form should offer model choices."""
+
+    monkeypatch.setattr("leropa.web.available_models", lambda: ["m1", "m2"])
+    client = _client()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "<option value='m1'>" in response.text
+    assert "<option value='m2'>" in response.text
+
+
+def test_chat_endpoint_uses_selected_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The chat endpoint should import the chosen model."""
+
+    class FakeModule:
+        @staticmethod
+        def ask_with_context(
+            question: str, collection: str, **_: Any
+        ) -> JSONDict:
+            return {"text": f"Echo: {question}", "contexts": []}
+
+    imported: dict[str, str] = {}
+
+    def fake_loader(name: str) -> Any:
+        imported["name"] = name
+        return FakeModule
+
+    monkeypatch.setattr(
+        "leropa.web._import_llm_module", fake_loader, raising=False
+    )
+    monkeypatch.setattr("leropa.web.available_models", lambda: ["x"])
+
+    client = _client()
+    response = client.post("/chat", data={"question": "Hi", "model": "x"})
+    assert response.status_code == 200
+    assert imported["name"] == "x"

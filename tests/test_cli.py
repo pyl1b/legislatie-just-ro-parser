@@ -411,3 +411,32 @@ def test_rag_recreate_invokes_module() -> None:
     assert result.exit_code == 0
     assert called["collection"] == "legal_articles"
     assert called["vector_size"] == 10
+
+
+def test_models_command_lists_models(monkeypatch) -> None:
+    """Ensure the models command prints available model names."""
+
+    # Return a predictable list of models.
+    monkeypatch.setattr(cli, "available_models", lambda: ["m1", "m2"])
+    runner = CliRunner()
+    result = runner.invoke(cli.cli, ["models"])
+    assert result.exit_code == 0
+    assert "m1" in result.output
+    assert "m2" in result.output
+
+
+def test_rag_respects_model_option(monkeypatch) -> None:
+    """Ensure rag commands import the user-selected model."""
+
+    loaded: dict[str, str] = {}
+
+    def fake_import(name: str) -> SimpleNamespace:
+        loaded["name"] = name
+        return SimpleNamespace(recreate_collection=lambda *a, **k: None)
+
+    monkeypatch.setattr(cli, "_import_llm_module", fake_import)
+    runner = CliRunner()
+    result = runner.invoke(cli.cli, ["rag", "--model", "custom", "recreate"])
+
+    assert result.exit_code == 0
+    assert loaded["name"] == "custom"
