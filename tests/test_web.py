@@ -193,12 +193,24 @@ def test_document_endpoints(
     assert {"ver_id": "1", "title": "Doc1"} in docs
     assert {"ver_id": "2", "title": "Doc2"} in docs
 
+    # HTML listing should include both titles.
+    response = client.get("/documents", params={"format": "html"})
+    assert response.status_code == 200
+    assert "Doc1" in response.text
+    assert "Doc2" in response.text
+
     # Fetching a document should strip ``full_text``.
     response = client.get("/documents/1")
     assert response.status_code == 200
     data = response.json()
     assert "full_text" not in data["articles"][0]
     assert data["articles"][0]["paragraphs"][0]["text"] == "P"
+
+    # HTML rendering should contain the article text.
+    response = client.get("/documents/1", params={"format": "html"})
+    assert response.status_code == 200
+    assert "Doc1" in response.text
+    assert "P" in response.text
 
 
 def test_export_md_endpoint(

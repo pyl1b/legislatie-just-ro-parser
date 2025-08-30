@@ -6,18 +6,16 @@ from fastapi import (  # type: ignore[import-not-found]
     APIRouter,
     HTTPException,
     Query,
+    Request,
     Response,
 )
-from fastapi.responses import (  # type: ignore[import-not-found]
-    HTMLResponse,
-    JSONResponse,
-)
+from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 
 from ..utils import (
     _document_files,
     _load_document_file,
-    _render_document,
     _strip_full_text,
+    templates,
 )
 
 router = APIRouter()
@@ -26,12 +24,14 @@ router = APIRouter()
 @router.get("/documents/{ver_id}")
 async def get_document(
     ver_id: str,
+    request: Request,
     format: str = Query(default="json", enum=["json", "html"]),
 ) -> Response:
     """Return a specific document by version identifier.
 
     Args:
         ver_id: Document version identifier.
+        request: Incoming request used for template rendering.
         format: Desired response format.
 
     Returns:
@@ -47,6 +47,8 @@ async def get_document(
 
     # Render as HTML when requested.
     if format == "html":
-        return HTMLResponse(_render_document(doc))
+        return templates.TemplateResponse(
+            "document_detail.html", {"request": request, "doc": doc}
+        )
 
     return JSONResponse(doc)

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ doc.document.title }}</h1>
+
+{% macro render_part(part) %}
+  <div class="ms-3">
+    {% if part.title %}
+      <h2>{{ part.title }}</h2>
+    {% endif %}
+    {% if part.label and part.text %}
+      <p><strong>{{ part.label }}</strong> {{ part.text }}</p>
+    {% elif part.text %}
+      <p>{{ part.text }}</p>
+    {% endif %}
+    {% for key in [
+      'books', 'titles', 'chapters', 'sections',
+      'articles', 'paragraphs', 'subparagraphs', 'annexes'] %}
+      {% for child in part.get(key, []) %}
+        {{ render_part(child) }}
+      {% endfor %}
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% for key in ['books', 'articles', 'annexes'] %}
+  {% for item in doc.get(key, []) %}
+    {{ render_part(item) }}
+  {% endfor %}
+{% endfor %}
+{% endblock %}

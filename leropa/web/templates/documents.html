@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Documents</h1>
+<ul class="list-group">
+  {% for doc in documents %}
+    <li class="list-group-item">
+      <a href="/documents/{{ doc.ver_id }}?format=html">{{ doc.title }}</a>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}
