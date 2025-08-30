@@ -10,6 +10,7 @@
     <button class="btn btn-primary" type="submit">Ask</button>
   </form>
   <textarea id="answer" class="form-control mt-3" rows="4" readonly></textarea>
+  <ul id="citations" class="list-group mt-3"></ul>
 </div>
 
 <div class="mb-4">
@@ -68,6 +69,26 @@ askForm.addEventListener('submit', async (e) => {
     // Populate the textarea with the answer text.
 
     document.getElementById('answer').value = data.text || '';
+
+    // Clear existing citation list before adding new items.
+
+    const citationList = document.getElementById('citations');
+    citationList.innerHTML = '';
+
+    // Add each context as a citation linking to the document details page.
+
+    (data.contexts || []).forEach((ctx, idx) => {
+      const src = ctx.source_file || '';
+      const verId = src.split('/').pop().split('.')[0];
+      const url = `/documents/${verId}?format=html#${ctx.article_id}`;
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      const a = document.createElement('a');
+      a.href = url;
+      a.textContent = `[${idx + 1}] Art. ${ctx.label}`;
+      li.appendChild(a);
+      citationList.appendChild(li);
+    });
   } catch (err) {
     // Show a toast notification for any errors.
 
