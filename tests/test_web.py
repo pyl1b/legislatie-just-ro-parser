@@ -60,11 +60,9 @@ def test_chat_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
         ) -> JSONDict:
             return {"text": f"Echo: {question}", "contexts": []}
 
-    # Replace the module loader with our stub implementation.
+    # Replace the RAG helper with our stub implementation.
     monkeypatch.setattr(
-        "leropa.web.routes.chat._import_llm_module",
-        lambda name: FakeModule,
-        raising=False,
+        "leropa.web.routes.chat._RAG", FakeModule, raising=False
     )
 
     client = _client()
@@ -105,32 +103,26 @@ def test_chat_form_lists_models(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_chat_endpoint_uses_selected_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The chat endpoint should import the chosen model."""
+    """The chat endpoint should set the chosen LLM model."""
 
-    class FakeModule:
+    class FakeRag:
+        GEN_MODEL = ""
+
         @staticmethod
         def ask_with_context(
             question: str, collection: str, **_: object
         ) -> JSONDict:
             return {"text": f"Echo: {question}", "contexts": []}
 
-    imported: dict[str, str] = {}
-
-    def fake_loader(name: str) -> type[FakeModule]:
-        imported["name"] = name
-        return FakeModule
-
     monkeypatch.setattr(
-        "leropa.web.routes.chat._import_llm_module", fake_loader, raising=False
+        "leropa.web.routes.chat.available_models", lambda: ["x"], raising=False
     )
-    monkeypatch.setattr(
-        "leropa.web.routes.chat.available_models", lambda: ["x"]
-    )
+    monkeypatch.setattr("leropa.web.routes.chat._RAG", FakeRag, raising=False)
 
     client = _client()
     response = client.post("/chat", data={"question": "Hi", "model": "x"})
     assert response.status_code == 200
-    assert imported["name"] == "x"
+    assert FakeRag.GEN_MODEL == "x"
 
 
 def test_document_endpoints(
@@ -231,11 +223,9 @@ def test_export_md_endpoint(
         ) -> tuple[int, int]:
             return (1, 2)
 
-    # Replace the exporter loader with our fake module.
+    # Replace the exporter helper with our fake module.
     monkeypatch.setattr(
-        "leropa.web.routes.export_md._import_llm_module",
-        lambda name: FakeModule,
-        raising=False,
+        "leropa.web.routes.export_md._EXPORTER", FakeModule, raising=False
     )
 
     client = _client()
@@ -307,9 +297,7 @@ def test_rag_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
         "leropa.web.routes.rag_start_qdrant",
     ]
     for mod in modules:
-        monkeypatch.setattr(
-            mod, "_import_llm_module", lambda name, m=mod: FakeRag
-        )
+        monkeypatch.setattr(mod, "_RAG", FakeRag, raising=False)
 
     client = _client()
 

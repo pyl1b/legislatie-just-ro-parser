@@ -9,6 +9,9 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the exporter module once; it exposes ``export_folder``.
+_EXPORTER = _import_llm_module("export_legal_articles_to_md")
+
 
 @router.get("/export-md")
 async def export_md_endpoint(
@@ -19,7 +22,6 @@ async def export_md_endpoint(
     ext: str = ".md",
     title_template: str = "Article {label} (ID: {article_id})",
     body_heading: str = "TEXT",
-    model: str = "export_legal_articles_to_md",
 ) -> JSONResponse:
     """Export legal JSON articles to chunked Markdown files.
 
@@ -36,11 +38,8 @@ async def export_md_endpoint(
         Summary of the export operation.
     """
 
-    # Import the requested exporter module.
-    mod = _import_llm_module(model)
-
     # Execute the export and capture resulting counts.
-    art_count, file_count = mod.export_folder(
+    art_count, file_count = _EXPORTER.export_folder(
         input_dir,
         output_dir,
         max_tokens=max_tokens,

@@ -9,6 +9,9 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the RAG module once; used for ingestion operations.
+_RAG = _import_llm_module("rag_legal_qdrant")
+
 
 @router.get("/rag/ingest")
 async def rag_ingest(
@@ -17,7 +20,6 @@ async def rag_ingest(
     batch: int = 32,
     chunk: int = 1000,
     overlap: int = 200,
-    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Ingest a folder of JSON/JSONL files.
 
@@ -32,9 +34,8 @@ async def rag_ingest(
         Number of ingested chunks.
     """
 
-    # Import the requested RAG module and process the folder.
-    mod = _import_llm_module(model)
-    total_ingested = mod.ingest_folder(
+    # Process the folder using the RAG helper.
+    total_ingested = _RAG.ingest_folder(
         folder,
         collection=collection,
         batch_size=batch,
