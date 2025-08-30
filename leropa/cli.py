@@ -176,6 +176,48 @@ def list_models() -> None:
         click.echo(name)
 
 
+@cli.command("web")
+@click.option(
+    "--host",
+    default="127.0.0.1",
+    show_default=True,
+    help="Server host.",
+)
+@click.option(
+    "--port",
+    type=int,
+    default=8000,
+    show_default=True,
+    help="Server port.",
+)
+@click.option(
+    "--reload/--no-reload",
+    default=False,
+    help="Enable auto-reload.",
+)
+def start_web(host: str, port: int, reload: bool) -> None:
+    """Start the FastAPI application via Uvicorn.
+
+    Args:
+        host: Address to bind the server.
+        port: Port for the server.
+        reload: Enable auto-reload.
+    """
+
+    # Import uvicorn at runtime to avoid mandatory dependency.
+    try:
+        import uvicorn  # type: ignore[import-not-found]
+    except ModuleNotFoundError as exc:  # pragma: no cover - narrow except
+        # Inform the user about missing optional dependencies.
+        raise click.ClickException(
+            "FastAPI extras are missing. Install them with "
+            "`pip install -e .[fastapi]`."
+        ) from exc
+
+    # Start the FastAPI application using the provided options.
+    uvicorn.run("leropa.web:app", host=host, port=port, reload=reload)
+
+
 @cli.command("export-md")
 @click.argument("input_dir")
 @click.argument("output_dir")

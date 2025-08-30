@@ -2,6 +2,7 @@
 
 import importlib
 import json
+import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -441,3 +442,31 @@ def test_rag_respects_model_option(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert result.exit_code == 0
     assert loaded["name"] == "custom"
+
+
+def test_web_command_invokes_uvicorn() -> None:
+    """Ensure web command starts the FastAPI app via Uvicorn."""
+
+    called: dict[str, Any] = {}
+
+    def fake_run(app: str, host: str, port: int, reload: bool) -> None:
+        called.update(
+            {"app": app, "host": host, "port": port, "reload": reload}
+        )
+
+    runner = CliRunner()
+    stub = SimpleNamespace(run=fake_run)
+
+    with patch.dict(sys.modules, {"uvicorn": stub}):
+        result = runner.invoke(
+            cli.cli,
+            ["web", "--host", "0.0.0.0", "--port", "1234", "--reload"],
+        )
+
+    assert result.exit_code == 0
+    assert called == {
+        "app": "leropa.web:app",
+        "host": "0.0.0.0",
+        "port": 1234,
+        "reload": True,
+    }

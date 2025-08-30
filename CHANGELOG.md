@@ -27,3 +27,4 @@
 - Add optional FastAPI module exposing CLI commands as HTTP endpoints.
 - List available LLM models and allow selecting the model via CLI and web API.
 - Expose endpoints to list and view structured documents via FastAPI.
+- Add `web` command to start FastAPI with Uvicorn.
