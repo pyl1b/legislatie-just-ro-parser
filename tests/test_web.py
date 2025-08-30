@@ -87,17 +87,13 @@ def test_models_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
     assert response.json() == ["m1", "m2"]
 
 
-def test_chat_form_lists_models(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The chat form should offer model choices."""
+def test_root_page_links_documents() -> None:
+    """Root page should link to the documents listing."""
 
-    monkeypatch.setattr(
-        "leropa.web.routes.root.available_models", lambda: ["m1", "m2"]
-    )
     client = _client()
     response = client.get("/")
     assert response.status_code == 200
-    assert "<option value='m1'>" in response.text
-    assert "<option value='m2'>" in response.text
+    assert '<a href="/documents?format=html"' in response.text
 
 
 def test_chat_endpoint_uses_selected_model(
@@ -311,8 +307,15 @@ def test_rag_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
         == "hit"
     )
     assert (
+        client.post("/rag/search", json={"query": "q"}).json()[0]["text"]
+        == "hit"
+    )
+    assert (
         client.get("/rag/ask", params={"question": "q"}).json()["text"]
         == "ans"
+    )
+    assert (
+        client.post("/rag/ask", json={"question": "q"}).json()["text"] == "ans"
     )
     assert (
         client.delete("/rag/delete", params={"article_id": "a"}).json()[

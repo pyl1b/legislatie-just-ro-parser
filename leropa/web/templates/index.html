@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Leropa RAG Demo</h1>
+<p><a href="/documents?format=html">Documents</a></p>
+
+<div class="mb-4">
+  <h2>Ask a question</h2>
+  <form id="ask-form" class="row g-3">
+    <div class="col-auto flex-grow-1">
+      <input id="question" name="question" class="form-control" placeholder="Your question" />
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary" type="submit">Ask</button>
+    </div>
+  </form>
+  <pre id="answer" class="mt-3 bg-light p-3"></pre>
+</div>
+
+<div class="mb-4">
+  <h2>Search documents</h2>
+  <form id="search-form" class="row g-3">
+    <div class="col-auto flex-grow-1">
+      <input id="query" name="query" class="form-control" placeholder="Search query" />
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-secondary" type="submit">Search</button>
+    </div>
+  </form>
+  <ul id="hits" class="list-group mt-3"></ul>
+</div>
+
+<script>
+const askForm = document.getElementById('ask-form');
+askForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const question = document.getElementById('question').value;
+  const resp = await fetch('/rag/ask', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({question})
+  });
+  const data = await resp.json();
+  document.getElementById('answer').textContent = data.text || '';
+});
+
+const searchForm = document.getElementById('search-form');
+searchForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const query = document.getElementById('query').value;
+  const resp = await fetch('/rag/search', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({query})
+  });
+  const hits = await resp.json();
+  const list = document.getElementById('hits');
+  list.innerHTML = '';
+  hits.forEach((hit) => {
+    const li = document.createElement('li');
+    li.className = 'list-group-item';
+    li.textContent = hit.text || JSON.stringify(hit);
+    list.appendChild(li);
+  });
+});
+</script>
+{% endblock %}

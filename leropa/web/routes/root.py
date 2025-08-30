@@ -1,30 +1,25 @@
-"""Root page displaying a chat form."""
+"""Root page displaying the RAG interface."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter  # type: ignore[import-not-found]
+from fastapi import APIRouter, Request  # type: ignore[import-not-found]
 from fastapi.responses import HTMLResponse  # type: ignore[import-not-found]
 
-from leropa.llm import available_models
+from ..utils import templates
 
 router = APIRouter()
 
 
 @router.get("/")
-async def chat_form() -> HTMLResponse:
-    """Render a minimal chat form."""
+async def root_page(request: Request) -> HTMLResponse:
+    """Render the main page with chat and search forms.
 
-    # Build options for all available models.
-    model_opts = "".join(
-        f"<option value='{name}'>{name}</option>"
-        for name in available_models()
-    )
+    Args:
+        request: Incoming request used for template rendering.
 
-    # Return a simple HTML form for submitting questions and selecting a model.
-    return HTMLResponse(
-        "<form method='post' action='/chat'>"
-        f"<select name='model'>{model_opts}</select>"
-        "<input name='question' type='text'/>"
-        "<button type='submit'>Ask</button>"
-        "</form>"
-    )
+    Returns:
+        Rendered HTML page.
+    """
+
+    # Render the Jinja2 template for the main page.
+    return templates.TemplateResponse("index.html", {"request": request})
