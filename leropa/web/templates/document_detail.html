@@ -3,6 +3,7 @@
 <h1>{{ doc.document.title }}</h1>
 
 {% macro render_part(part) %}
+  {%- if not isinstance(part, str) %}
   <div class="ms-3">
     {% if part.title %}
       <h2>{{ part.title }}</h2>
@@ -16,10 +17,12 @@
       'books', 'titles', 'chapters', 'sections',
       'articles', 'paragraphs', 'subparagraphs', 'annexes'] %}
       {% for child in part.get(key, []) %}
+        <!-- {{ key }} -->
         {{ render_part(child) }}
       {% endfor %}
     {% endfor %}
   </div>
+  {%- endif %}
 {% endmacro %}
 
 {% for key in ['books', 'articles', 'annexes'] %}

@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/documents")
 async def list_documents(
     request: Request,
-    format: str = Query(default="json", enum=["json", "html"]),
+    format: str = Query(default="html", enum=["json", "html"]),
 ) -> Response:
     """List structured documents available on the server.
 

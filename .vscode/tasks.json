@@ -37,7 +37,10 @@
         "web"
       ],
       "options": {
-        "cwd": "${workspaceFolder}"
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LEROPA_DOCUMENTS": "./playground/current"
+        }
       },
       "presentation": {
         "reveal": "always",

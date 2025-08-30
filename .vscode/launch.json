@@ -73,8 +73,21 @@
         "python": "${workspaceFolder}\\venv\\Scripts\\python.exe"
       }
     },
-
-
+    {
+      "name": "LEROPA: web",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "web"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "env": {
+        "LEROPA_DOCUMENTS": "${workspaceFolder}/playground/current"
+      }
+    },
     {
       "name": "RAG • start-qdrant",
       "type": "debugpy",
