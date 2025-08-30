@@ -9,6 +9,7 @@ init-d:
 	pip install -e .[dev]
 	pip install -e .[orjson]
 	pip install -e .[llm]
+	pip install -e .[fastapi]
 
 
 test:
