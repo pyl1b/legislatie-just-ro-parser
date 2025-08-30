@@ -3,7 +3,7 @@
 <h1>{{ doc.document.title }}</h1>
 
 {% macro render_part(part) %}
-  {%- if not isinstance(part, str) %}
+  {%- if not is_str(part) %}
   <div class="ms-3">
     {% if part.title %}
       <h2>{{ part.title }}</h2>

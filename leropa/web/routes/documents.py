@@ -12,8 +12,9 @@ from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 
 from ..utils import (
     DocumentSummaryList,
-    _document_files,
-    _load_document_file,
+    create_jinja_context,
+    document_files,
+    load_document_file,
     templates,
 )
 
@@ -37,8 +38,8 @@ async def list_documents(
 
     # Gather summaries for all known documents.
     summaries: DocumentSummaryList = []
-    for path in _document_files():
-        data = _load_document_file(path)
+    for path in document_files():
+        data = load_document_file(path)
         info = data.get("document", {})
         summaries.append(
             {"ver_id": info.get("ver_id"), "title": info.get("title")}
@@ -47,7 +48,8 @@ async def list_documents(
     # Render as HTML when requested.
     if format == "html":
         return templates.TemplateResponse(
-            "documents.html", {"request": request, "documents": summaries}
+            "documents.html",
+            context=create_jinja_context(request=request, documents=summaries),
         )
 
     return JSONResponse(summaries)
@@ -65,9 +67,9 @@ async def list_documents_raw() -> JSONResponse:
     summaries: DocumentSummaryList = []
 
     # Iterate through all known document files.
-    for path in _document_files():
+    for path in document_files():
         # Read document structure from disk.
-        data = _load_document_file(path)
+        data = load_document_file(path)
         info = data.get("document", {})
 
         # Record identifier and title.

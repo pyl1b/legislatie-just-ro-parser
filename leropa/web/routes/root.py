@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Request  # type: ignore[import-not-found]
 from fastapi.responses import HTMLResponse  # type: ignore[import-not-found]
 
-from ..utils import templates
+from ..utils import create_jinja_context, templates
 
 router = APIRouter()
 
@@ -22,4 +22,6 @@ async def root_page(request: Request) -> HTMLResponse:
     """
 
     # Render the Jinja2 template for the main page.
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html", context=create_jinja_context(request=request)
+    )

@@ -27,7 +27,7 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 
-def _document_files() -> list[Path]:
+def document_files() -> list[Path]:
     """Return available document files from ``DOCUMENTS_DIR``.
 
     Returns:
@@ -46,7 +46,7 @@ def _document_files() -> list[Path]:
     return files
 
 
-def _load_document_file(path: Path) -> JSONDict:
+def load_document_file(path: Path) -> JSONDict:
     """Load a structured document from ``path``.
 
     Args:
@@ -64,7 +64,7 @@ def _load_document_file(path: Path) -> JSONDict:
     return yaml.safe_load(text)
 
 
-def _strip_full_text(doc: JSONDict) -> JSONDict:
+def strip_full_text(doc: JSONDict) -> JSONDict:
     """Remove ``full_text`` from articles to expose granular content.
 
     Args:
@@ -77,3 +77,11 @@ def _strip_full_text(doc: JSONDict) -> JSONDict:
     for article in doc.get("articles", []):
         article.pop("full_text", None)
     return doc
+
+
+def create_jinja_context(**kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Create the additional variables for the Jinja2 template renderer."""
+    return {
+        "is_str": lambda x: isinstance(x, str),
+        **kwargs,
+    }
