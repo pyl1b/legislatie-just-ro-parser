@@ -58,7 +58,11 @@ def test_chat_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
             final_k: int = 8,
             use_reranker: bool = True,
         ) -> JSONDict:
-            return {"text": f"Echo: {question}", "contexts": []}
+            return {
+                "text": f"Echo: {question}",
+                "contexts": [],
+                "documents": {},
+            }
 
     # Replace the RAG helper with our stub implementation.
     monkeypatch.setattr(
@@ -117,7 +121,11 @@ def test_chat_endpoint_uses_selected_model(
         def ask_with_context(
             question: str, collection: str, **_: object
         ) -> JSONDict:
-            return {"text": f"Echo: {question}", "contexts": []}
+            return {
+                "text": f"Echo: {question}",
+                "contexts": [],
+                "documents": {},
+            }
 
     monkeypatch.setattr(
         "leropa.web.routes.chat.available_models", lambda: ["x"], raising=False
@@ -339,7 +347,7 @@ def test_rag_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
             final_k: int,
             use_reranker: bool,
         ) -> dict[str, object]:
-            return {"text": "ans", "contexts": []}
+            return {"text": "ans", "contexts": [], "documents": {}}
 
         @staticmethod
         def delete_by_article_id(article_id: str, collection: str) -> int:
