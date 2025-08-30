@@ -33,34 +33,78 @@
 const askForm = document.getElementById('ask-form');
 askForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  // Read the question from the input field.
+
   const question = document.getElementById('question').value;
-  const resp = await fetch('/rag/ask', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({question})
-  });
-  const data = await resp.json();
-  document.getElementById('answer').textContent = data.text || '';
+
+  try {
+    // Perform a POST request to the ask endpoint.
+
+    const resp = await fetch('/rag/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question}),
+    });
+
+    // Throw an error if the response is not successful.
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(errText || resp.statusText);
+    }
+
+    // Parse the JSON answer and display it to the user.
+
+    const data = await resp.json();
+    document.getElementById('answer').textContent = data.text || '';
+  } catch (err) {
+    // Show a toast notification for any errors.
+
+    showToast(err.message);
+  }
 });
 
 const searchForm = document.getElementById('search-form');
 searchForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+
+  // Read the search query from the input field.
+
   const query = document.getElementById('query').value;
-  const resp = await fetch('/rag/search', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({query})
-  });
-  const hits = await resp.json();
-  const list = document.getElementById('hits');
-  list.innerHTML = '';
-  hits.forEach((hit) => {
-    const li = document.createElement('li');
-    li.className = 'list-group-item';
-    li.textContent = hit.text || JSON.stringify(hit);
-    list.appendChild(li);
-  });
+
+  try {
+    // Perform a POST request to the search endpoint.
+
+    const resp = await fetch('/rag/search', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query}),
+    });
+
+    // Throw an error if the response is not successful.
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(errText || resp.statusText);
+    }
+
+    // Parse the JSON hits and populate the list with results.
+
+    const hits = await resp.json();
+    const list = document.getElementById('hits');
+    list.innerHTML = '';
+    hits.forEach((hit) => {
+      const li = document.createElement('li');
+      li.className = 'list-group-item';
+      li.textContent = hit.text || JSON.stringify(hit);
+      list.appendChild(li);
+    });
+  } catch (err) {
+    // Show a toast notification for any errors.
+
+    showToast(err.message);
+  }
 });
 </script>
 {% endblock %}
