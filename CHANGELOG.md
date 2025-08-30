@@ -30,3 +30,5 @@
 - Add `web` command to start FastAPI with Uvicorn.
 - Show citation links on the question-answer web page.
 - Cache document metadata for 15 minutes and return it with RAG answers.
+- Reuse document metadata cache for document listings.
+- Provide separate admin page for adding and deleting documents.

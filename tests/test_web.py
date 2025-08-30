@@ -240,6 +240,7 @@ def test_document_endpoints(
     assert response.status_code == 200
     assert "Doc1" in response.text
     assert "Doc2" in response.text
+    assert 'id="add-form"' not in response.text
 
     # Fetching a document should strip ``full_text``.
     response = client.get("/documents/1")
@@ -252,6 +253,82 @@ def test_document_endpoints(
     response = client.get("/documents/1", params={"format": "html"})
     assert response.status_code == 200
     assert "Doc1" in response.text
+
+
+def test_documents_admin_page_shows_forms(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Admin page should expose controls for managing documents."""
+
+    doc = {
+        "document": {
+            "source": "s",
+            "ver_id": "1",
+            "title": "Doc1",
+            "description": "",
+            "keywords": "",
+            "history": [],
+            "prev_ver": None,
+            "next_ver": None,
+        },
+        "articles": [],
+        "books": [],
+        "annexes": [],
+    }
+
+    (tmp_path / "1.json").write_text(json_dumps(doc))
+    monkeypatch.setenv("LEROPA_DOCUMENTS", str(tmp_path))
+
+    client = _client()
+    response = client.get("/documents-admin")
+    assert response.status_code == 200
+    assert 'id="add-form"' in response.text
+    assert 'id="delete-button"' in response.text
+
+
+def test_documents_listing_uses_cache(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Listing documents should use the metadata cache."""
+
+    doc = {
+        "document": {
+            "source": "s",
+            "ver_id": "1",
+            "title": "Doc1",
+            "description": "",
+            "keywords": "",
+            "history": [],
+            "prev_ver": None,
+            "next_ver": None,
+        },
+        "articles": [],
+        "books": [],
+        "annexes": [],
+    }
+
+    (tmp_path / "1.yaml").write_text(
+        yaml.safe_dump(doc, allow_unicode=True, sort_keys=False)
+    )
+    monkeypatch.setenv("LEROPA_DOCUMENTS", str(tmp_path))
+
+    calls = {"n": 0}
+
+    from leropa.parser.document_info import DocumentInfo
+
+    def fake_load(path: Path) -> DocumentInfo:
+        calls["n"] += 1
+        data = yaml.safe_load(path.read_text())
+        return DocumentInfo(**data["document"])
+
+    monkeypatch.setattr(
+        "leropa.web.routes.documents.load_document_info", fake_load
+    )
+
+    client = _client()
+    response = client.get("/documents")
+    assert response.status_code == 200
+    assert calls["n"] == 1
 
 
 def test_document_admin_add_delete(

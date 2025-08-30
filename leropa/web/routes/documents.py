@@ -18,6 +18,7 @@ from pydantic import BaseModel  # type: ignore[import-not-found]
 
 from leropa import parser
 from leropa.cli import _import_llm_module
+from leropa.document_cache import load_document_info
 
 from ..utils import (
     DOCUMENTS_DIR,
@@ -36,6 +37,26 @@ RECYCLE_DIR = DOCUMENTS_DIR / "recycle"
 router = APIRouter()
 
 
+def _load_summaries() -> DocumentSummaryList:
+    """Return summaries for available structured documents.
+
+    Returns:
+        List of mappings containing document identifiers and titles.
+    """
+
+    summaries: DocumentSummaryList = []
+
+    # Iterate through all known document files.
+    for path in document_files():
+        # Use the same metadata cache employed by RAG operations.
+        info = load_document_info(path)
+
+        # Record identifier and title for later rendering.
+        summaries.append({"ver_id": info.ver_id, "title": info.title})
+
+    return summaries
+
+
 @router.get("/documents")
 async def list_documents(
     request: Request,
@@ -51,14 +72,8 @@ async def list_documents(
         Either a JSON list or an HTML page with document links.
     """
 
-    # Gather summaries for all known documents.
-    summaries: DocumentSummaryList = []
-    for path in document_files():
-        data = load_document_file(path)
-        info = data.get("document", {})
-        summaries.append(
-            {"ver_id": info.get("ver_id"), "title": info.get("title")}
-        )
+    # Gather summaries using the shared metadata cache.
+    summaries = _load_summaries()
 
     # Render as HTML when requested.
     if format == "html":
@@ -82,22 +97,30 @@ async def list_documents_raw() -> JSONResponse:
         List of document summaries.
     """
 
-    # Initialize list for summary entries.
-    summaries: DocumentSummaryList = []
-
-    # Iterate through all known document files.
-    for path in document_files():
-        # Read document structure from disk.
-        data = load_document_file(path)
-        info = data.get("document", {})
-
-        # Record identifier and title.
-        summaries.append(
-            {"ver_id": info.get("ver_id"), "title": info.get("title")}
-        )
-
     # Return collected summaries as JSON.
-    return JSONResponse(summaries)
+    return JSONResponse(_load_summaries())
+
+
+@router.get("/documents-admin")
+async def documents_admin(request: Request) -> Response:
+    """Render admin page for adding and deleting documents.
+
+    Args:
+        request: Incoming request used for template rendering.
+
+    Returns:
+        Rendered HTML response containing management controls.
+    """
+
+    summaries = _load_summaries()
+    return templates.TemplateResponse(
+        "documents_admin.html",
+        context=create_jinja_context(
+            request=request,
+            documents=summaries,
+            title="Documents Admin | leropa",
+        ),
+    )
 
 
 @router.post("/documents/add")

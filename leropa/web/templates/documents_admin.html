@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Documents</h1>
+
+<div class="mb-3">
+  <form id="add-form" class="input-group">
+    <input type="text" class="form-control" name="ver_id" placeholder="Document ID" required />
+    <button class="btn btn-primary" type="submit">Add</button>
+  </form>
+</div>
+
+<form id="delete-form">
+  <ul class="list-group">
+    {% for doc in documents %}
+      <li class="list-group-item d-flex align-items-center">
+        <input class="form-check-input me-2" type="checkbox" value="{{ doc.ver_id }}" name="ver_id" />
+        <a href="/documents/{{ doc.ver_id }}?format=html">{{ doc.title }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+  <button id="delete-button" type="button" class="btn btn-danger mt-3">Remove Selected</button>
+  <button id="recreate-button" type="button" class="btn btn-warning mt-3 ms-2">Recreate Collection</button>
+</form>
+
+<div id="progress" class="d-none text-center mt-3">
+  <div class="spinner-border" role="status"></div>
+  <span class="ms-2">Processing...</span>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const progress = document.getElementById('progress');
+
+  function showProgress(show) {
+    progress.classList.toggle('d-none', !show);
+  }
+
+  document.getElementById('add-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const verId = form.ver_id.value.trim();
+    if (!verId) return;
+    showProgress(true);
+    try {
+      const resp = await fetch('/documents/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ver_id: verId})
+      });
+      if (!resp.ok) {
+        throw new Error(await resp.text() || resp.statusText);
+      }
+      location.reload();
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      showProgress(false);
+    }
+  });
+
+  document.getElementById('delete-button').addEventListener('click', async () => {
+    const ids = Array.from(document.querySelectorAll('input[name="ver_id"]:checked')).map(el => el.value);
+    if (!ids.length) return;
+    showProgress(true);
+    try {
+      const resp = await fetch('/documents/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids})
+      });
+      if (!resp.ok) {
+        throw new Error(await resp.text() || resp.statusText);
+      }
+      location.reload();
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      showProgress(false);
+    }
+  });
+
+  document.getElementById('recreate-button').addEventListener('click', async () => {
+    showProgress(true);
+    try {
+      const resp = await fetch('/rag/recreate');
+      if (!resp.ok) {
+        throw new Error(await resp.text() || resp.statusText);
+      }
+      showToast('Collection recreated');
+    } catch (err) {
+      showToast(err.message);
+    } finally {
+      showProgress(false);
+    }
+  });
+});
+</script>
+{% endblock %}
