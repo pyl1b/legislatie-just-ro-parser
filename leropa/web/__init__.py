@@ -17,18 +17,34 @@ from fastapi.responses import (
 
 from leropa import parser
 from leropa.cli import _import_llm_module
+from leropa.llm import available_models
 from leropa.xlsx import write_workbook
 
 app = FastAPI()
+
+
+@app.get("/models")
+async def list_models() -> JSONResponse:
+    """Return the list of available LLM models."""
+
+    # Provide the model names as a simple JSON list.
+    return JSONResponse(available_models())
 
 
 @app.get("/")
 async def chat_form() -> HTMLResponse:
     """Render a minimal chat form."""
 
-    # Return a simple HTML form for submitting questions.
+    # Build options for all available models.
+    model_opts = "".join(
+        f"<option value='{name}'>{name}</option>"
+        for name in available_models()
+    )
+
+    # Return a simple HTML form for submitting questions and selecting a model.
     return HTMLResponse(
         "<form method='post' action='/chat'>"
+        f"<select name='model'>{model_opts}</select>"
         "<input name='question' type='text'/>"
         "<button type='submit'>Ask</button>"
         "</form>"
@@ -36,17 +52,27 @@ async def chat_form() -> HTMLResponse:
 
 
 @app.post("/chat")
-async def chat(question: str = Form(...)) -> HTMLResponse:
+async def chat(
+    question: str = Form(...),
+    model: str = Form("rag_legal_qdrant"),
+) -> HTMLResponse:
     """Handle chat questions and display the answer."""
 
-    # Import the RAG module and generate an answer.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and generate an answer.
+    mod = _import_llm_module(model)
     answer = mod.ask_with_context(question, collection="legal_articles")
+
+    # Build the model options for rendering the form again.
+    model_opts = "".join(
+        f"<option value='{name}'>{name}</option>"
+        for name in available_models()
+    )
 
     # Render the answer in a new HTML page along with the form.
     return HTMLResponse(
         f"<p>{answer['text']}</p>"
         "<form method='post' action='/chat'>"
+        f"<select name='model'>{model_opts}</select>"
         "<input name='question' type='text'/>"
         "<button type='submit'>Ask</button>"
         "</form>"
@@ -106,6 +132,7 @@ async def export_md_endpoint(
     ext: str = ".md",
     title_template: str = "Article {label} (ID: {article_id})",
     body_heading: str = "TEXT",
+    model: str = "export_legal_articles_to_md",
 ) -> JSONResponse:
     """Export legal JSON articles to chunked Markdown files.
 
@@ -122,8 +149,8 @@ async def export_md_endpoint(
         Summary of the export operation.
     """
 
-    # Import the exporter module.
-    mod = _import_llm_module("export_legal_articles_to_md")
+    # Import the requested exporter module.
+    mod = _import_llm_module(model)
 
     # Execute the export and capture resulting counts.
     art_count, file_count = mod.export_folder(
@@ -150,6 +177,7 @@ async def export_md_endpoint(
 async def rag_recreate(
     collection: str = "legal_articles",
     dims: int = 768,
+    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """(Re)create the configured Qdrant collection.
 
@@ -161,8 +189,8 @@ async def rag_recreate(
         Confirmation of the operation.
     """
 
-    # Import the RAG module and trigger the collection creation.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and trigger the collection creation.
+    mod = _import_llm_module(model)
     mod.recreate_collection(collection, vector_size=dims)
     return JSONResponse({"status": "ready"})
 
@@ -174,6 +202,7 @@ async def rag_ingest(
     batch: int = 32,
     chunk: int = 1000,
     overlap: int = 200,
+    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Ingest a folder of JSON/JSONL files.
 
@@ -188,8 +217,8 @@ async def rag_ingest(
         Number of ingested chunks.
     """
 
-    # Import the RAG module and process the folder.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and process the folder.
+    mod = _import_llm_module(model)
     total_ingested = mod.ingest_folder(
         folder,
         collection=collection,
@@ -206,6 +235,7 @@ async def rag_search(
     collection: str = "legal_articles",
     topk: int = 24,
     label: str | None = None,
+    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Perform a semantic search over ingested articles.
 
@@ -219,8 +249,8 @@ async def rag_search(
         Search results from the RAG module.
     """
 
-    # Import the RAG module and perform the search.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and perform the search.
+    mod = _import_llm_module(model)
     hits = mod.search(query, collection=collection, top_k=topk, label=label)
     return JSONResponse(hits)
 
@@ -232,6 +262,7 @@ async def rag_ask(
     topk: int = 24,
     finalk: int = 8,
     no_rerank: bool = False,
+    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Ask a question and receive an answer with context.
 
@@ -246,8 +277,8 @@ async def rag_ask(
         Generated answer and its contexts.
     """
 
-    # Import the RAG module and get the answer with context.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and get the answer with context.
+    mod = _import_llm_module(model)
     answer = mod.ask_with_context(
         question,
         collection=collection,
@@ -262,6 +293,7 @@ async def rag_ask(
 async def rag_delete(
     article_id: str,
     collection: str = "legal_articles",
+    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Delete items from the collection by ``article_id``.
 
@@ -273,8 +305,8 @@ async def rag_delete(
         Number of deleted points.
     """
 
-    # Import the RAG module and perform the deletion.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and perform the deletion.
+    mod = _import_llm_module(model)
     total_deleted = mod.delete_by_article_id(article_id, collection=collection)
     return JSONResponse({"deleted": total_deleted})
 
@@ -285,6 +317,7 @@ async def rag_start_qdrant(
     port: int = 6333,
     volume: str = "qdrant_storage",
     image: str = "qdrant/qdrant:latest",
+    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Attempt to start Qdrant via Docker.
 
@@ -298,8 +331,8 @@ async def rag_start_qdrant(
         Whether the container was started successfully.
     """
 
-    # Import the RAG module and start the Docker container.
-    mod = _import_llm_module("rag_legal_qdrant")
+    # Import the requested RAG module and start the Docker container.
+    mod = _import_llm_module(model)
     result = mod.start_qdrant_docker(
         name=name, port=port, volume=volume, image=image
     )
