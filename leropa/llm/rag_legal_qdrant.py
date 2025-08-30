@@ -98,8 +98,6 @@ from leropa.web.utils import DOCUMENTS_DIR
 # Optional re-ranker (CPU ok). If unavailable, pipeline still works.
 CrossEncoder: Any = None  # ensure bound for type checkers and runtime
 try:
-    from sentence_transformers import CrossEncoder  # type: ignore
-
     _HAS_RERANKER = True
 except Exception:
     _HAS_RERANKER = False
@@ -129,8 +127,8 @@ OVERLAP_TOKENS = int(os.environ.get("OVERLAP_TOKENS", "200"))
 
 # Reranker model (if sentence-transformers installed)
 RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-base")
-TOP_K_RETRIEVE = int(os.environ.get("TOP_K_RETRIEVE", "24"))
-TOP_K_CONTEXT = int(os.environ.get("TOP_K_CONTEXT", "8"))
+TOP_K_RETRIEVE = int(os.environ.get("TOP_K_RETRIEVE", "64"))
+TOP_K_CONTEXT = int(os.environ.get("TOP_K_CONTEXT", "16"))
 
 LANGUAGE: Literal["ro", "en"] = os.environ.get("DLG_LNG", "ro")  # type: ignore
 assert LANGUAGE in ["ro", "en"]
@@ -583,14 +581,14 @@ def ask_with_context(
     items = search(question, collection=collection, top_k=top_k)
 
     # 2) Optional rerank to choose best 'final_k'
-    if use_reranker and _HAS_RERANKER and len(items) > final_k:
-        assert CrossEncoder is not None
-        reranker = CrossEncoder(RERANKER_MODEL, device="cpu")
-        pairs = [(question, it["text"]) for it in items]
-        scores = reranker.predict(pairs).tolist()
-        for it, s in zip(items, scores):
-            it["rerank"] = float(s)
-        items.sort(key=lambda x: x["rerank"], reverse=True)
+    # if use_reranker and _HAS_RERANKER and len(items) > final_k:
+    #     assert CrossEncoder is not None
+    #     reranker = CrossEncoder(RERANKER_MODEL, device="cpu")
+    #     pairs = [(question, it["text"]) for it in items]
+    #     scores = reranker.predict(pairs).tolist()
+    #     for it, s in zip(items, scores):
+    #         it["rerank"] = float(s)
+    #     items.sort(key=lambda x: x["rerank"], reverse=True)
     contexts = items[:final_k]
 
     # 3) Build context blocks and prompt
@@ -655,7 +653,7 @@ def ask_with_context(
                 "file_id": file_id,
                 "source_file": rel_file,
                 "score": ctx["score"],
-                "rerank": ctx["rerank"],
+                "rerank": ctx.get("rerank", None),
             }
         )
 

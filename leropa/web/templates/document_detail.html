@@ -145,12 +145,14 @@
 
 
 {%- macro render_chapter(chapter) %}
-  <h4 id="{{ chapter.chapter_id }}" class="doc-chapter">
-    {{ chapter.title if chapter.title else 'Capitolul ' ~ chapter.chapter_id  }}
-    {%- if chapter.description %}
-      <span class="doc-chapter-description">{{ chapter.description }}</span>
-    {%- endif %}
-  </h4>
+  {%- if chapter.chapter_id != "default_chapter" %}
+    <h4 id="{{ chapter.chapter_id }}" class="doc-chapter">
+      {{ chapter.title if chapter.title else 'Capitolul ' ~ chapter.chapter_id  }}
+      {%- if chapter.description %}
+        <span class="doc-chapter-description">{{ chapter.description }}</span>
+      {%- endif %}
+    </h4>
+  {%- endif %}
   {{ render_sections(chapter.get('sections', [])) }}
   {{ render_articles(chapter.get('articles', [])) }}
 {%- endmacro %}

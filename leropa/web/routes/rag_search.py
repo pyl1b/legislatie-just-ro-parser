@@ -67,6 +67,6 @@ async def rag_search_post(payload: SearchRequest) -> JSONResponse:
         payload.query,
         collection=payload.collection,
         top_k=payload.topk,
-        label=payload.label,
+        filter_by_label=payload.label,
     )
     return JSONResponse(hits)

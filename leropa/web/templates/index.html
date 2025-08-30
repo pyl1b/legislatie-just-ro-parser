@@ -102,13 +102,14 @@ askForm.addEventListener('submit', async (e) => {
     (data.contexts || []).forEach((ctx, idx) => {
       const src = ctx.source_file || '';
       const verId = ctx.file_id;
+      const src_doc = data.documents[verId];
       const url = `/documents/${verId}?format=html#${ctx.article_id}`;
       const li = document.createElement('li');
       li.className = 'list-group-item';
       const a = document.createElement('a');
       a.href = url;
-      a.title = src;
-      a.textContent = `[${idx + 1}] Art. ${ctx.label}`;
+      a.title = src + (src_doc.description ? ` - ${src_doc.description}` : '');
+      a.textContent = `[${idx + 1}] Art. ${ctx.label}, ${src_doc.title}`;
       a.target = '_blank';
       li.appendChild(a);
       citationList.appendChild(li);
@@ -122,8 +123,9 @@ askForm.addEventListener('submit', async (e) => {
       if (!ctx) {
         return match;
       }
+      const src_doc = data.documents[ctx.file_id];
       const url = `/documents/${ctx.file_id}?format=html#${ctx.article_id}`;
-      const title = `${ctx.source_file || ''} - Art. ${ctx.label}`;
+      const title = `${src_doc.title || ''} - Art. ${ctx.label}`;
       return `<a href="${url}" title="${title}" target="_blank">${match}</a>`;
     });
 
