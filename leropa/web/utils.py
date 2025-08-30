@@ -27,6 +27,18 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
 
 
+def get_documents_dir() -> Path:
+    """Return the current documents directory honoring environment changes.
+
+    Returns:
+        Path to the documents directory, using ``LEROPA_DOCUMENTS`` if set.
+    """
+
+    default_dir = Path.home() / ".leropa" / "documents"
+    env_dir = os.environ.get("LEROPA_DOCUMENTS")
+    return Path(env_dir) if env_dir else default_dir
+
+
 def document_files() -> list[Path]:
     """Return available document files from ``DOCUMENTS_DIR``.
 
@@ -35,14 +47,17 @@ def document_files() -> list[Path]:
         yield an empty list.
     """
 
+    # Compute the documents directory dynamically to honor environment changes.
+    documents_dir = get_documents_dir()
+
     # Return early when directory does not exist.
-    if not DOCUMENTS_DIR.exists():
+    if not documents_dir.exists():
         return []
 
     # Collect files with supported extensions.
     files: list[Path] = []
     for pattern in ("*.json", "*.yaml", "*.yml"):
-        files.extend(DOCUMENTS_DIR.glob(pattern))
+        files.extend(documents_dir.glob(pattern))
     return files
 
 

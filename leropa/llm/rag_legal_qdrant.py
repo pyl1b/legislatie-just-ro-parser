@@ -73,6 +73,7 @@ import logging
 import os
 import subprocess
 import uuid
+from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple
 
 import requests
@@ -253,7 +254,7 @@ def _read_yaml_file(path: str) -> List[Dict[str, Any]]:
 
 
 def _iter_json_objects(
-    root: str,
+    root: str | Path,
 ) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
     """Yield (source_file, article) pairs from ``root`` directory.
 
@@ -433,7 +434,7 @@ def recreate_collection(
 
 
 def ingest_folder(
-    root: str,
+    root: str | Path,
     collection: str,
     batch_size: int = 32,
     chunk_tokens: int = MAX_TOKENS_PER_CHUNK,

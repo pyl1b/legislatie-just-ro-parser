@@ -25,9 +25,40 @@ class AskRequest(BaseModel):
 _RAG = _import_llm_module("rag_legal_qdrant")
 
 
-@router.api_route("/rag/ask", methods=["GET", "POST"])
-async def rag_ask(payload: AskRequest) -> JSONResponse:
-    """Ask a question and receive an answer with context.
+@router.get("/rag/ask")
+async def rag_ask_get(
+    question: str,
+    collection: str = "legal_articles",
+    topk: int = 24,
+    finalk: int = 8,
+    no_rerank: bool = False,
+) -> JSONResponse:
+    """Ask a question via query parameters and receive an answer.
+
+    Args:
+        question: The question to ask the model.
+        collection: Qdrant collection name.
+        topk: Number of documents to retrieve.
+        finalk: Number of documents to include in final context.
+        no_rerank: Disable the re-ranker when true.
+
+    Returns:
+        Generated answer and its contexts.
+    """
+
+    answer = _RAG.ask_with_context(
+        question,
+        collection=collection,
+        top_k=topk,
+        final_k=finalk,
+        use_reranker=not no_rerank,
+    )
+    return JSONResponse(answer)
+
+
+@router.post("/rag/ask")
+async def rag_ask_post(payload: AskRequest) -> JSONResponse:
+    """Ask a question via JSON body and receive an answer.
 
     Args:
         payload: Parameters controlling the question and retrieval.
@@ -36,7 +67,6 @@ async def rag_ask(payload: AskRequest) -> JSONResponse:
         Generated answer and its contexts.
     """
 
-    # Get the answer with context using the RAG helper.
     answer = _RAG.ask_with_context(
         payload.question,
         collection=payload.collection,

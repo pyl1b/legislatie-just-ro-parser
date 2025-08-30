@@ -14,6 +14,7 @@ from fastapi import (  # type: ignore[import-not-found]
     Response,
 )
 from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
+from pydantic import BaseModel  # type: ignore[import-not-found]
 
 from leropa import parser
 from leropa.cli import _import_llm_module
@@ -23,6 +24,7 @@ from ..utils import (
     DocumentSummaryList,
     create_jinja_context,
     document_files,
+    get_documents_dir,
     load_document_file,
     templates,
 )
@@ -37,7 +39,7 @@ router = APIRouter()
 @router.get("/documents")
 async def list_documents(
     request: Request,
-    format: str = Query(default="html", enum=["json", "html"]),
+    format: str = Query(default="json", enum=["json", "html"]),
 ) -> Response:
     """List structured documents available on the server.
 
@@ -99,22 +101,23 @@ async def list_documents_raw() -> JSONResponse:
 
 
 @router.post("/documents/add")
-async def add_document(ver_id: str) -> JSONResponse:
+async def add_document(payload: "AddRequest") -> JSONResponse:
     """Fetch, save and ingest a new document.
 
     Args:
-        ver_id: Identifier of the document to add.
+        payload: Request payload containing the document identifier.
 
     Returns:
         Summary information about the stored document.
     """
 
     # Parse the document from the remote source.
-    doc = parser.fetch_document(ver_id, cache_dir=None)
+    doc = parser.fetch_document(payload.ver_id, cache_dir=None)
 
     # Ensure the documents directory exists and write the YAML dump.
-    DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
-    target = DOCUMENTS_DIR / f"{ver_id}.yaml"
+    docs_dir = get_documents_dir()
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    target = docs_dir / f"{payload.ver_id}.yaml"
     target.write_text(
         yaml.safe_dump(doc, allow_unicode=True, sort_keys=False),
         encoding="utf-8",
@@ -132,21 +135,22 @@ async def add_document(ver_id: str) -> JSONResponse:
 
 
 @router.post("/documents/delete")
-async def delete_documents(ids: list[str]) -> JSONResponse:
+async def delete_documents(payload: "DeleteRequest") -> JSONResponse:
     """Remove documents and delete their articles from the database.
 
     Args:
-        ids: List of document identifiers to remove.
+        payload: Request payload containing document identifiers to remove.
 
     Returns:
         Mapping containing the removed identifiers.
     """
 
     removed: list[str] = []
-    RECYCLE_DIR.mkdir(parents=True, exist_ok=True)
+    recycle_dir = get_documents_dir() / "recycle"
+    recycle_dir.mkdir(parents=True, exist_ok=True)
 
     # Iterate over requested identifiers.
-    for ver_id in ids:
+    for ver_id in payload.ids:
         # Locate a matching document file.
         path = next((p for p in document_files() if p.stem == ver_id), None)
         if not path:
@@ -160,7 +164,19 @@ async def delete_documents(ids: list[str]) -> JSONResponse:
                 _RAG.delete_by_article_id(art_id, collection="legal_articles")
 
         # Move the file into the recycle bin.
-        shutil.move(str(path), RECYCLE_DIR / path.name)
+        shutil.move(str(path), recycle_dir / path.name)
         removed.append(ver_id)
 
     return JSONResponse({"removed": removed})
+
+
+class AddRequest(BaseModel):
+    """Request body for adding a document."""
+
+    ver_id: str
+
+
+class DeleteRequest(BaseModel):
+    """Request body for deleting documents."""
+
+    ids: list[str]

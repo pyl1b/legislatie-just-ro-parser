@@ -21,7 +21,21 @@
   <ul id="hits" class="list-group mt-3"></ul>
 </div>
 
+<div id="progress" class="d-none mt-3">
+  <div class="progress">
+    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+  </div>
+  <div class="text-muted mt-1">Waiting for reply...</div>
+  
+</div>
+
 <script>
+const progressEl = document.getElementById('progress');
+
+function showProgress(show) {
+  progressEl.classList.toggle('d-none', !show);
+}
+
 const askForm = document.getElementById('ask-form');
 askForm.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -31,6 +45,7 @@ askForm.addEventListener('submit', async (e) => {
   const question = document.getElementById('question').value;
 
   try {
+    showProgress(true);
     // Perform a POST request to the ask endpoint.
 
     const resp = await fetch('/rag/ask', {
@@ -57,6 +72,8 @@ askForm.addEventListener('submit', async (e) => {
     // Show a toast notification for any errors.
 
     showToast(err.message);
+  } finally {
+    showProgress(false);
   }
 });
 
@@ -69,6 +86,7 @@ searchForm.addEventListener('submit', async (e) => {
   const query = document.getElementById('query').value;
 
   try {
+    showProgress(true);
     // Perform a POST request to the search endpoint.
 
     const resp = await fetch('/rag/search', {
@@ -99,6 +117,8 @@ searchForm.addEventListener('submit', async (e) => {
     // Show a toast notification for any errors.
 
     showToast(err.message);
+  } finally {
+    showProgress(false);
   }
 });
 </script>
