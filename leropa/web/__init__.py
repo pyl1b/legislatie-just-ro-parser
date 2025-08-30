@@ -7,8 +7,14 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import yaml  # type: ignore[import-untyped]
-from fastapi import BackgroundTasks, FastAPI, Form, Query, Response
-from fastapi.responses import (
+from fastapi import (  # type: ignore[import-not-found]
+    BackgroundTasks,
+    FastAPI,
+    Form,
+    Query,
+    Response,
+)
+from fastapi.responses import (  # type: ignore[import-not-found]
     FileResponse,
     HTMLResponse,
     JSONResponse,
