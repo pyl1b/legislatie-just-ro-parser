@@ -24,3 +24,4 @@
 - Include article labels parsed from ``S_ART_TTL`` without the ``Articolul``
   prefix.
 - Allow `rag_legal_qdrant` to ingest parser outputs and remove its argparse CLI.
+- Add optional FastAPI module exposing CLI commands as HTTP endpoints.

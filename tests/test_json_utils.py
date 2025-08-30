@@ -19,8 +19,12 @@ def test_json_dumps_with_orjson(monkeypatch: MonkeyPatch) -> None:
     """Serialize using orjson when available."""
 
     class Fake:
+        """Stub ``orjson`` module used in tests."""
+
+        OPT_INDENT_2 = 2
+
         def dumps(
-            self, obj: object
+            self, obj: object, option: int
         ) -> bytes:  # pragma: no cover - simple stub
             return b"{}"
 
