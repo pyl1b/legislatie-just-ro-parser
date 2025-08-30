@@ -78,6 +78,7 @@ from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
 
 import requests
 import yaml  # type: ignore[import]
+from attrs import asdict
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
     Distance,
@@ -90,6 +91,7 @@ from qdrant_client.models import (
 )
 from tqdm import tqdm  # type: ignore
 
+from leropa.document_cache import load_document_info
 from leropa.json_utils import json_loads
 from leropa.web.utils import DOCUMENTS_DIR
 
@@ -573,8 +575,9 @@ def ask_with_context(
         use_reranker: Whether to use the reranker.
 
     Returns:
-        {"text": answer, "contexts": [...]}
-        with contexts including [n] indices.
+        {"text": answer, "contexts": [...], "documents": {...}}
+        with contexts including [n] indices and ``documents`` providing
+        metadata for each referenced file.
     """
     # 1) Retrieve
     items = search(question, collection=collection, top_k=top_k)
@@ -630,9 +633,18 @@ def ask_with_context(
     answer_text = _ollama_chat(system, user, stream=False)
 
     result_ctx_list = []
+
+    # Collect unique document metadata for each source file.
+    documents: Dict[str, Dict[str, Any]] = {}
+
     for idx, ctx in enumerate(contexts, start=1):
         rel_file = str(Path(ctx["source_file"]).relative_to(DOCUMENTS_DIR))
         file_id = os.path.splitext(os.path.basename(rel_file))[0]
+
+        # Load document info only once per file and convert to plain dict.
+        if file_id not in documents:
+            info = load_document_info(DOCUMENTS_DIR / rel_file)
+            documents[file_id] = asdict(info)
 
         result_ctx_list.append(
             {
@@ -646,7 +658,12 @@ def ask_with_context(
                 "rerank": ctx["rerank"],
             }
         )
-    return {"text": answer_text, "contexts": result_ctx_list}
+
+    return {
+        "text": answer_text,
+        "contexts": result_ctx_list,
+        "documents": documents,
+    }
 
 
 def delete_by_article_id(article_id: str, collection: str) -> int:

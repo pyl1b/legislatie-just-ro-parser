@@ -29,3 +29,4 @@
 - Expose endpoints to list and view structured documents via FastAPI.
 - Add `web` command to start FastAPI with Uvicorn.
 - Show citation links on the question-answer web page.
+- Cache document metadata for 15 minutes and return it with RAG answers.
