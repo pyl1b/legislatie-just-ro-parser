@@ -96,6 +96,15 @@ def test_root_page_links_documents() -> None:
     assert '<a href="/documents?format=html"' in response.text
 
 
+def test_root_page_has_citations_list() -> None:
+    """Index page should include a container for citations."""
+
+    client = _client()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'id="citations"' in response.text
+
+
 def test_chat_endpoint_uses_selected_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -368,13 +377,12 @@ def test_rag_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
         client.post("/rag/search", json={"query": "q"}).json()[0]["text"]
         == "hit"
     )
-    assert (
-        client.get("/rag/ask", params={"question": "q"}).json()["text"]
-        == "ans"
-    )
-    assert (
-        client.post("/rag/ask", json={"question": "q"}).json()["text"] == "ans"
-    )
+    resp = client.get("/rag/ask", params={"question": "q"}).json()
+    assert resp["text"] == "ans"
+    assert resp["contexts"] == []
+    resp = client.post("/rag/ask", json={"question": "q"}).json()
+    assert resp["text"] == "ans"
+    assert resp["contexts"] == []
     assert (
         client.delete("/rag/delete", params={"article_id": "a"}).json()[
             "deleted"
