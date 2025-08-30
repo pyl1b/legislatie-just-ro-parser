@@ -5,25 +5,30 @@ from __future__ import annotations
 from fastapi import (  # type: ignore[import-not-found]
     APIRouter,
     Query,
+    Request,
     Response,
 )
-from fastapi.responses import (  # type: ignore[import-not-found]
-    HTMLResponse,
-    JSONResponse,
-)
+from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 
-from ..utils import DocumentSummaryList, _document_files, _load_document_file
+from ..utils import (
+    DocumentSummaryList,
+    _document_files,
+    _load_document_file,
+    templates,
+)
 
 router = APIRouter()
 
 
 @router.get("/documents")
 async def list_documents(
+    request: Request,
     format: str = Query(default="json", enum=["json", "html"]),
 ) -> Response:
     """List structured documents available on the server.
 
     Args:
+        request: Incoming request used for template rendering.
         format: Desired response format.
 
     Returns:
@@ -41,13 +46,8 @@ async def list_documents(
 
     # Render as HTML when requested.
     if format == "html":
-        template = (
-            "<li><a href='/documents/{ver}?format=html'>{title}</a></li>"
+        return templates.TemplateResponse(
+            "documents.html", {"request": request, "documents": summaries}
         )
-        items = "".join(
-            template.format(ver=s["ver_id"], title=s["title"])
-            for s in summaries
-        )
-        return HTMLResponse(f"<ul>{items}</ul>")
 
     return JSONResponse(summaries)
