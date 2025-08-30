@@ -4,31 +4,33 @@ from __future__ import annotations
 
 from fastapi import APIRouter  # type: ignore[import-not-found]
 from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
+from pydantic import BaseModel  # type: ignore[import-not-found]
 
 from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+
+class AskRequest(BaseModel):
+    """Input payload for the ask endpoint."""
+
+    question: str
+    collection: str = "legal_articles"
+    topk: int = 24
+    finalk: int = 8
+    no_rerank: bool = False
+
+
 # Load the RAG module once; used for answering questions.
 _RAG = _import_llm_module("rag_legal_qdrant")
 
 
-@router.get("/rag/ask")
-async def rag_ask(
-    question: str,
-    collection: str = "legal_articles",
-    topk: int = 24,
-    finalk: int = 8,
-    no_rerank: bool = False,
-) -> JSONResponse:
+@router.api_route("/rag/ask", methods=["GET", "POST"])
+async def rag_ask(payload: AskRequest) -> JSONResponse:
     """Ask a question and receive an answer with context.
 
     Args:
-        question: The question to ask the model.
-        collection: Qdrant collection name.
-        topk: Number of documents to retrieve.
-        finalk: Number of documents to include in the final context.
-        no_rerank: Disable the re-ranker when True.
+        payload: Parameters controlling the question and retrieval.
 
     Returns:
         Generated answer and its contexts.
@@ -36,10 +38,10 @@ async def rag_ask(
 
     # Get the answer with context using the RAG helper.
     answer = _RAG.ask_with_context(
-        question,
-        collection=collection,
-        top_k=topk,
-        final_k=finalk,
-        use_reranker=not no_rerank,
+        payload.question,
+        collection=payload.collection,
+        top_k=payload.topk,
+        final_k=payload.finalk,
+        use_reranker=not payload.no_rerank,
     )
     return JSONResponse(answer)
