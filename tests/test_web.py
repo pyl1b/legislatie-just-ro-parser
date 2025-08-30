@@ -109,6 +109,15 @@ def test_root_page_has_citations_list() -> None:
     assert 'id="citations"' in response.text
 
 
+def test_root_page_has_model_select() -> None:
+    """Index page should include a dropdown for model selection."""
+
+    client = _client()
+    response = client.get("/")
+    assert response.status_code == 200
+    assert 'id="model"' in response.text
+
+
 def test_chat_endpoint_uses_selected_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -136,6 +145,34 @@ def test_chat_endpoint_uses_selected_model(
     response = client.post("/chat", data={"question": "Hi", "model": "x"})
     assert response.status_code == 200
     assert FakeRag.GEN_MODEL == "x"
+
+
+def test_rag_ask_endpoint_uses_selected_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The rag ask endpoint should set the chosen LLM model."""
+
+    class FakeRag:
+        GEN_MODEL = ""
+
+        @staticmethod
+        def ask_with_context(
+            question: str, collection: str, **_: object
+        ) -> JSONDict:
+            return {
+                "text": "ans",
+                "contexts": [],
+                "documents": {},
+            }
+
+    monkeypatch.setattr(
+        "leropa.web.routes.rag_ask._RAG", FakeRag, raising=False
+    )
+
+    client = _client()
+    response = client.post("/rag/ask", json={"question": "q", "model": "y"})
+    assert response.status_code == 200
+    assert FakeRag.GEN_MODEL == "y"
 
 
 def test_document_endpoints(

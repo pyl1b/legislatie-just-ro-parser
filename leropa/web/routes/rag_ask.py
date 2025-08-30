@@ -12,13 +12,23 @@ router = APIRouter()
 
 
 class AskRequest(BaseModel):
-    """Input payload for the ask endpoint."""
+    """Input payload for the ask endpoint.
+
+    Attributes:
+        question: The question to ask the model.
+        collection: Qdrant collection name.
+        topk: Number of documents to retrieve.
+        finalk: Number of documents to include in final context.
+        no_rerank: Disable the re-ranker when true.
+        model: Name of the LLM model to use.
+    """
 
     question: str
     collection: str = "legal_articles"
     topk: int = 24
     finalk: int = 8
     no_rerank: bool = False
+    model: str | None = None
 
 
 # Load the RAG module once; used for answering questions.
@@ -32,6 +42,7 @@ async def rag_ask_get(
     topk: int = 24,
     finalk: int = 8,
     no_rerank: bool = False,
+    model: str | None = None,
 ) -> JSONResponse:
     """Ask a question via query parameters and receive an answer.
 
@@ -41,10 +52,14 @@ async def rag_ask_get(
         topk: Number of documents to retrieve.
         finalk: Number of documents to include in final context.
         no_rerank: Disable the re-ranker when true.
+        model: Name of the LLM model to use.
 
     Returns:
         Generated answer and its contexts.
     """
+
+    if model:
+        setattr(_RAG, "GEN_MODEL", model)
 
     answer = _RAG.ask_with_context(
         question,
@@ -66,6 +81,9 @@ async def rag_ask_post(payload: AskRequest) -> JSONResponse:
     Returns:
         Generated answer and its contexts.
     """
+
+    if payload.model:
+        setattr(_RAG, "GEN_MODEL", payload.model)
 
     answer = _RAG.ask_with_context(
         payload.question,

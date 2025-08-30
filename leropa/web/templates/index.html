@@ -6,6 +6,7 @@
 <div class="mb-4">
   <h2>Ask a question</h2>
   <form id="ask-form" class="input-group">
+    <select id="model" name="model" class="form-select"></select>
     <input type="text" id="question" name="question" class="form-control" placeholder="Your question" aria-label="Question" />
     <button class="btn btn-primary" type="submit">Ask</button>
   </form>
@@ -39,12 +40,34 @@ function showProgress(show) {
 }
 
 const askForm = document.getElementById('ask-form');
+const modelSelect = document.getElementById('model');
+
+// Populate the model dropdown by fetching available models from the server.
+async function populateModels() {
+  try {
+    const resp = await fetch('/models');
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(errText || resp.statusText);
+    }
+    const models = await resp.json();
+    modelSelect.innerHTML = models
+      .map((m) => `<option value="${m}">${m}</option>`)
+      .join('');
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+populateModels();
+
 askForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   // Read the question from the input field.
 
   const question = document.getElementById('question').value;
+  const model = document.getElementById('model').value;
   if (question.trim() === '') {
     showToast('Please enter a question');
     return;
@@ -57,7 +80,7 @@ askForm.addEventListener('submit', async (e) => {
     const resp = await fetch('/rag/ask', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({question}),
+      body: JSON.stringify({question, model}),
     });
 
     // Throw an error if the response is not successful.
