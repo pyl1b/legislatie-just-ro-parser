@@ -10,7 +10,11 @@ patterns such as ``1.2.3`` are nested under their numeric parents and expose a
 ``level`` attribute that reflects their depth in the hierarchy.
 
 The resulting structure can be exported as JSON, YAML or XLSX. Spreadsheet
-exports place each type of data on its own worksheet.
+exports place each type of data on its own worksheet. Articles already
+converted to JSON can be turned into Markdown for large language models, and
+the package provides a retrieval-augmented generation (RAG) workflow that uses
+Qdrant and Ollama for semantic search and question answering. An optional
+FastAPI web application exposes the same capabilities over HTTP.
 
 ## Installation
 
@@ -20,11 +24,18 @@ Requires Python 3.11 or newer.
 pip install leropa
 ```
 
+Optional extras install additional features:
+
+- `pip install leropa[llm]` – RAG commands and Markdown exporter.
+- `pip install leropa[fastapi]` – FastAPI web interface.
+- `pip install leropa[orjson]` – faster JSON serialization.
+- `pip install leropa[dev]` – development dependencies.
+
 ## Command Line Usage
 
-The package installs a console script named `leropa`. The `convert` command
-retrieves a document by its identifier and prints the structured representation
-as JSON:
+The package installs a console script named `leropa` with several commands.
+The `convert` command retrieves a document by its identifier and prints the
+structured representation as JSON:
 
 ```bash
 leropa convert 123456
@@ -42,6 +53,25 @@ leropa convert 123456 --format xlsx --output sheets.xlsx
 
 When `--output` points to a directory the file name is derived from the document
 identifier.
+
+Other useful commands include:
+
+```bash
+# Export existing JSON/JSONL articles to Markdown
+leropa export-md input_dir output_dir
+
+# List locally available LLM model modules
+leropa models
+
+# Start the FastAPI application (requires [fastapi] extras)
+leropa web --reload
+
+# Manage a Qdrant/Ollama RAG pipeline (requires [llm] extras)
+leropa rag recreate          # create or reset the collection
+leropa rag ingest data/      # ingest JSON articles
+leropa rag search "terms"   # semantic search
+leropa rag ask "question"    # answer with context
+```
 
 ## Library Usage
 
