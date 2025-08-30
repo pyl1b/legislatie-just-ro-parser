@@ -48,9 +48,15 @@ async def get_document(
 
     # Render as HTML when requested.
     if format == "html":
+        title = doc.get("document", {}).get("title", "Document")
         return templates.TemplateResponse(
             "document_detail.html",
-            context=create_jinja_context(request=request, doc=doc),
+            context=create_jinja_context(
+                request=request,
+                doc=doc,
+                doc_articles={a["article_id"]: a for a in doc["articles"]},
+                title=f"{title} | leropa",
+            ),
         )
 
     return JSONResponse(doc)

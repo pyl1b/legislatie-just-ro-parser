@@ -49,7 +49,11 @@ async def list_documents(
     if format == "html":
         return templates.TemplateResponse(
             "documents.html",
-            context=create_jinja_context(request=request, documents=summaries),
+            context=create_jinja_context(
+                request=request,
+                documents=summaries,
+                title="Documents | leropa",
+            ),
         )
 
     return JSONResponse(summaries)

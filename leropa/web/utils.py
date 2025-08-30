@@ -79,8 +79,15 @@ def strip_full_text(doc: JSONDict) -> JSONDict:
     return doc
 
 
-def create_jinja_context(**kwargs: dict[str, Any]) -> dict[str, Any]:
-    """Create the additional variables for the Jinja2 template renderer."""
+def create_jinja_context(**kwargs: object) -> dict[str, object]:
+    """Create additional variables for the Jinja2 template renderer.
+
+    Args:
+        kwargs: Extra key-value pairs to inject into the template context.
+
+    Returns:
+        Mapping used as the Jinja2 context.
+    """
     return {
         "is_str": lambda x: isinstance(x, str),
         **kwargs,

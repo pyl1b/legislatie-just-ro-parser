@@ -1,33 +1,224 @@
 {% extends "base.html" %}
-{% block content %}
-<h1>{{ doc.document.title }}</h1>
+{%- block head %}
+  <style>
+    .doc-note {
+      font-size: 0.8rem;
+      font-style: italic;
+      color: gray;
+    }
+    .doc-subparagraphs {
+      font-size: 0.95rem;
+      list-style-type: none;
+    }
+    .doc-article-label {
+      color: brown;
+      margin-block-end: 0px;
+    }
+    .doc-book-description {
+      color: rgb(2, 2, 97);
+    }
+    .doc-chapter {
+      color: rgb(4, 73, 15);
+    }
+  </style>
+{%- endblock %}
 
-{% macro render_part(part) %}
-  {%- if not is_str(part) %}
-  <div class="ms-3">
-    {% if part.title %}
-      <h2>{{ part.title }}</h2>
-    {% endif %}
-    {% if part.label and part.text %}
-      <p><strong>{{ part.label }}</strong> {{ part.text }}</p>
-    {% elif part.text %}
-      <p>{{ part.text }}</p>
-    {% endif %}
-    {% for key in [
-      'books', 'titles', 'chapters', 'sections',
-      'articles', 'paragraphs', 'subparagraphs', 'annexes'] %}
-      {% for child in part.get(key, []) %}
-        <!-- {{ key }} -->
-        {{ render_part(child) }}
-      {% endfor %}
-    {% endfor %}
-  </div>
+
+{%- block content %}
+<h1 class="doc-title">{{ doc.document.title }}</h1>
+<p>
+  Sursa:
+  <a href="{{ doc.document.source }}">
+    <span class="doc-source-link">
+      <i class="bi bi-link"></i>
+      {{ doc.document.source }}
+    </span>
+  </a>
+</p>
+
+{%- macro render_note(note) %}
+  <p
+    id="{{ note.note_id }}"
+    class="doc-note"
+    data-note-id="{{ note.note_id }}"
+    data-date="{{ note.date }}"
+    data-subject="{{ note.subject }}"
+    data-law-number="{{ note.law_number }}"
+    data-law-date="{{ note.law_date }}"
+    data-monitor-number="{{ note.monitor_number }}"
+    data-monitor-date="{{ note.monitor_date }}"
+    data-replaced="{{ note.replaced }}"
+    data-replacement="{{ note.replacement }}"
+  >
+    {{ note.text }}
+  </p>
+{%- endmacro %}
+
+
+{%- macro render_notes(notes) %}
+  {%- for note in notes %}
+    {{ render_note(note) }}
+  {%- endfor %}
+{%- endmacro %}
+
+
+{%- macro render_subparagraph(subparagraph) %}
+  <li id="{{ subparagraph.sub_id }}" class="doc-subparagraph">
+    {%- if subparagraph.label %}
+      <strong>{{ subparagraph.label }}</strong>&nbsp;
+    {%- endif %}
+    {{ subparagraph.text }}
+  </li>
+{%- endmacro %}
+
+
+{%- macro render_subparagraphs(subparagraphs) %}
+  {%- if subparagraphs %}
+    <ul class="doc-subparagraphs">
+      {%- for subparagraph in subparagraphs %}
+        {{ render_subparagraph(subparagraph) }}
+      {%- endfor %}
+    </ul>
   {%- endif %}
+{%- endmacro %}
+
+
+{%- macro render_paragraph(paragraph) %}
+  <p id="{{ paragraph.par_id }}" class="doc-paragraph">
+    {%- if paragraph.label %}
+      <strong>{{ paragraph.label }}</strong>&nbsp;
+    {%- endif %}
+    {{- paragraph.text -}}
+    {{- render_subparagraphs(paragraph.subparagraphs) }}
+    {{- render_notes(paragraph.notes) }}
+  </p>
+{%- endmacro %}
+
+
+{%- macro render_paragraphs(paragraphs) %}
+  {%- for paragraph in paragraphs %}
+    {{ render_paragraph(paragraph) }}
+  {%- endfor %}
+{%- endmacro %}
+
+
+{%- macro render_article(article) %}
+  <div id="{{ article.article_id }}" class="doc-article">
+    {%- if article.label %}
+      <h6 class="doc-article-label">Articolul {{ article.label }}</h6>
+    {%- endif %}
+
+    {{ render_paragraphs(article.paragraphs) }}
+    {{ render_notes(article.notes) }}
+  </div>
+{%- endmacro %}
+
+
+{%- macro render_articles(articles) %}
+  {%- for article in articles %}
+    {{ render_article(doc_articles[article]) }}
+  {%- endfor %}
+{%- endmacro %}
+
+
+{%- macro render_section(section) %}
+  <h5 id="{{ section.section_id }}" class="doc-section">
+    {{ section.title if section.title else 'Secţiunea ' ~ section.section_id  }}
+    {%- if section.description %}
+      <span class="doc-section-description">{{ section.description }}</span>
+    {%- endif %}
+  </h5>
+  {{ render_sections(section.get('subsections', [])) }}
+  {{ render_articles(section.get('articles', [])) }}
+{%- endmacro %}
+
+
+{%- macro render_sections(sections) %}
+  {%- if sections %}
+    <div class="doc-sections">
+      {%- for section in sections %}
+        {{ render_section(section) }}
+      {%- endfor %}
+    </div>
+  {%- endif %}
+{%- endmacro %}
+
+
+{%- macro render_chapter(chapter) %}
+  <h4 id="{{ chapter.chapter_id }}" class="doc-chapter">
+    {{ chapter.title if chapter.title else 'Capitolul ' ~ chapter.chapter_id  }}
+    {%- if chapter.description %}
+      <span class="doc-chapter-description">{{ chapter.description }}</span>
+    {%- endif %}
+  </h4>
+  {{ render_sections(chapter.get('sections', [])) }}
+  {{ render_articles(chapter.get('articles', [])) }}
+{%- endmacro %}
+
+
+{% macro render_chapters(chapters) %}
+  {%- for chapter in chapters %}
+    {{ render_chapter(chapter) }}
+    <hr />
+  {%- endfor %}
 {% endmacro %}
 
-{% for key in ['books', 'articles', 'annexes'] %}
-  {% for item in doc.get(key, []) %}
-    {{ render_part(item) }}
-  {% endfor %}
+
+{% macro render_title(b_title) %}
+  <h3 id="{{ b_title.title_id }}" class="doc-title">
+    {{ b_title.title if b_title.title else 'Titlul ' ~ b_title.title_id  }}
+    {%- if b_title.description %}
+      <span class="doc-title-description">{{ b_title.description }}</span>
+    {%- endif %}
+  </h3>
+  {{ render_chapters(b_title.get('chapters', [])) }}
+  {{ render_sections(b_title.get('sections', [])) }}
+  {{ render_articles(b_title.get('articles', [])) }}
+{% endmacro %}
+
+
+{% macro render_titles(b_titles) %}
+  {%- for b_title in b_titles %}
+    {{ render_title(b_title) }}
+  {%- endfor %}
+{% endmacro %}
+
+
+{% macro render_book(book) %}
+  <div class="doc-book" id="{{ book.book_id }}">
+    {%- if book.book_id != 'default_book' %}
+    <h2 class="doc-book-title">
+      {{ book.title if book.title else 'Cartea ' ~ book.book_id  }}
+      {%- if book.description %}
+        <span class="doc-book-description">{{ book.description }}</span>
+      {%- endif %}
+    </h2>
+    {%- endif %}
+
+    {{ render_titles(book.get('titles', [])) }}
+    {{ render_chapters(book.get('chapters', [])) }}
+    {{ render_sections(book.get('sections', [])) }}
+    {{ render_articles(book.get('articles', [])) }}
+  </div>
+{% endmacro %}
+
+
+{%- for book in doc.get('books', []) %}
+  {{ render_book(book) }}
 {% endfor %}
-{% endblock %}
+
+
+{% macro render_annex(annex) %}
+  <div id="{{ annex.annex_id }}" class="doc-annex">
+    <h3 class="doc-annex-title">{{ annex.title }}</h3>
+    <p class="doc-annex-text">{{ annex.text }}</p>
+  </div>
+{% endmacro %}
+
+
+{%- for annex in doc.get('annexes', []) %}
+  {{ render_annex(annex) }}
+{% endfor %}
+
+
+{%- endblock %}
