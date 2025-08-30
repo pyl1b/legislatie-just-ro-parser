@@ -9,6 +9,9 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the RAG module once; used for utility operations.
+_RAG = _import_llm_module("rag_legal_qdrant")
+
 
 @router.get("/rag/start-qdrant")
 async def rag_start_qdrant(
@@ -16,7 +19,6 @@ async def rag_start_qdrant(
     port: int = 6333,
     volume: str = "qdrant_storage",
     image: str = "qdrant/qdrant:latest",
-    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Attempt to start Qdrant via Docker.
 
@@ -30,9 +32,8 @@ async def rag_start_qdrant(
         Whether the container was started successfully.
     """
 
-    # Import the requested RAG module and start the Docker container.
-    mod = _import_llm_module(model)
-    result = mod.start_qdrant_docker(
+    # Start the Docker container using the RAG helper.
+    result = _RAG.start_qdrant_docker(
         name=name, port=port, volume=volume, image=image
     )
     return JSONResponse({"started": bool(result)})

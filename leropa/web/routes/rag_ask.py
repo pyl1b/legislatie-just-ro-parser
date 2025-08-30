@@ -9,6 +9,9 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the RAG module once; used for answering questions.
+_RAG = _import_llm_module("rag_legal_qdrant")
+
 
 @router.get("/rag/ask")
 async def rag_ask(
@@ -17,7 +20,6 @@ async def rag_ask(
     topk: int = 24,
     finalk: int = 8,
     no_rerank: bool = False,
-    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Ask a question and receive an answer with context.
 
@@ -32,9 +34,8 @@ async def rag_ask(
         Generated answer and its contexts.
     """
 
-    # Import the requested RAG module and get the answer with context.
-    mod = _import_llm_module(model)
-    answer = mod.ask_with_context(
+    # Get the answer with context using the RAG helper.
+    answer = _RAG.ask_with_context(
         question,
         collection=collection,
         top_k=topk,

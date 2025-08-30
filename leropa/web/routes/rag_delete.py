@@ -9,12 +9,14 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the RAG module once for collection operations.
+_RAG = _import_llm_module("rag_legal_qdrant")
+
 
 @router.delete("/rag/delete")
 async def rag_delete(
     article_id: str,
     collection: str = "legal_articles",
-    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Delete items from the collection by ``article_id``.
 
@@ -26,7 +28,8 @@ async def rag_delete(
         Number of deleted points.
     """
 
-    # Import the requested RAG module and perform the deletion.
-    mod = _import_llm_module(model)
-    total_deleted = mod.delete_by_article_id(article_id, collection=collection)
+    # Perform the deletion using the RAG helper.
+    total_deleted = _RAG.delete_by_article_id(
+        article_id, collection=collection
+    )
     return JSONResponse({"deleted": total_deleted})

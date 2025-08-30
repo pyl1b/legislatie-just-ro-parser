@@ -9,6 +9,9 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the RAG module once; used for search operations.
+_RAG = _import_llm_module("rag_legal_qdrant")
+
 
 @router.get("/rag/search")
 async def rag_search(
@@ -16,7 +19,6 @@ async def rag_search(
     collection: str = "legal_articles",
     topk: int = 24,
     label: str | None = None,
-    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """Perform a semantic search over ingested articles.
 
@@ -30,7 +32,6 @@ async def rag_search(
         Search results from the RAG module.
     """
 
-    # Import the requested RAG module and perform the search.
-    mod = _import_llm_module(model)
-    hits = mod.search(query, collection=collection, top_k=topk, label=label)
+    # Perform the search using the RAG helper.
+    hits = _RAG.search(query, collection=collection, top_k=topk, label=label)
     return JSONResponse(hits)

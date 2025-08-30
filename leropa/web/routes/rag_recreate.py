@@ -9,12 +9,14 @@ from leropa.cli import _import_llm_module
 
 router = APIRouter()
 
+# Load the RAG module once for collection maintenance.
+_RAG = _import_llm_module("rag_legal_qdrant")
+
 
 @router.get("/rag/recreate")
 async def rag_recreate(
     collection: str = "legal_articles",
     dims: int = 768,
-    model: str = "rag_legal_qdrant",
 ) -> JSONResponse:
     """(Re)create the configured Qdrant collection.
 
@@ -26,7 +28,6 @@ async def rag_recreate(
         Confirmation of the operation.
     """
 
-    # Import the requested RAG module and trigger the collection creation.
-    mod = _import_llm_module(model)
-    mod.recreate_collection(collection, vector_size=dims)
+    # Trigger the collection creation using the RAG helper.
+    _RAG.recreate_collection(collection, vector_size=dims)
     return JSONResponse({"status": "ready"})

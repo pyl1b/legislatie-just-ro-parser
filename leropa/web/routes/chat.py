@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Form  # type: ignore[import-not-found]
 from fastapi.responses import HTMLResponse  # type: ignore[import-not-found]
 
@@ -10,21 +12,25 @@ from leropa.llm import available_models
 
 router = APIRouter()
 
+# Load the RAG module once; it provides the ``ask_with_context`` helper.
+_RAG: Any = _import_llm_module("rag_legal_qdrant")
+
 
 @router.post("/chat")
 async def chat(
     question: str = Form(...),
-    model: str = Form("rag_legal_qdrant"),
+    model: str = Form("llama3.2:3b"),
 ) -> HTMLResponse:
     """Handle chat questions and display the answer."""
 
-    # Import the requested RAG module and generate an answer.
-    mod = _import_llm_module(model)
-    answer = mod.ask_with_context(question, collection="legal_articles")
+    # Configure the generation model on the RAG helper and generate an answer.
+    setattr(_RAG, "GEN_MODEL", model)
+    answer = _RAG.ask_with_context(question, collection="legal_articles")
 
-    # Build the model options for rendering the form again.
+    # Build the model options for rendering the form again, marking selection.
     model_opts = "".join(
-        f"<option value='{name}'>{name}</option>"
+        f"<option value='{name}'"
+        f"{' selected' if name == model else ''}>{name}</option>"
         for name in available_models()
     )
 
