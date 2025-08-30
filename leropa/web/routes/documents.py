@@ -51,3 +51,29 @@ async def list_documents(
         )
 
     return JSONResponse(summaries)
+
+
+@router.post("/documents")
+async def list_documents_raw() -> JSONResponse:
+    """Return raw list of document identifiers and titles.
+
+    Returns:
+        List of document summaries.
+    """
+
+    # Initialize list for summary entries.
+    summaries: DocumentSummaryList = []
+
+    # Iterate through all known document files.
+    for path in _document_files():
+        # Read document structure from disk.
+        data = _load_document_file(path)
+        info = data.get("document", {})
+
+        # Record identifier and title.
+        summaries.append(
+            {"ver_id": info.get("ver_id"), "title": info.get("title")}
+        )
+
+    # Return collected summaries as JSON.
+    return JSONResponse(summaries)

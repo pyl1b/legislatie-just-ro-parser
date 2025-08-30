@@ -200,6 +200,25 @@ def test_document_endpoints(
     assert "Doc1" in response.text
     assert "P" in response.text
 
+    # POST listing should return raw summaries.
+    response = client.post("/documents")
+    assert response.status_code == 200
+    docs = response.json()
+    assert {"ver_id": "1", "title": "Doc1"} in docs
+    assert {"ver_id": "2", "title": "Doc2"} in docs
+
+    # POST detail should return raw JSON content.
+    response = client.post("/documents/1")
+    assert response.status_code == 200
+    assert response.text == (tmp_path / "1.json").read_text()
+    assert response.headers["content-type"] == "application/json"
+
+    # POST detail should return raw YAML content.
+    response = client.post("/documents/2")
+    assert response.status_code == 200
+    assert response.text == (tmp_path / "2.yaml").read_text()
+    assert response.headers["content-type"] == "application/x-yaml"
+
 
 def test_export_md_endpoint(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path

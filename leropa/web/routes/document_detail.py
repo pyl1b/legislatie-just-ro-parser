@@ -52,3 +52,33 @@ async def get_document(
         )
 
     return JSONResponse(doc)
+
+
+@router.post("/documents/{ver_id}")
+async def get_document_raw(ver_id: str) -> Response:
+    """Return the raw content of a document file.
+
+    Args:
+        ver_id: Document version identifier.
+
+    Returns:
+        Raw text of the document's JSON or YAML file.
+    """
+
+    # Locate the document file matching ``ver_id``.
+    file_path = next((p for p in _document_files() if p.stem == ver_id), None)
+    if file_path is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Read the file contents as text.
+    text = file_path.read_text(encoding="utf-8")
+
+    # Choose response media type based on file extension.
+    media_type = (
+        "application/json"
+        if file_path.suffix == ".json"
+        else "application/x-yaml"
+    )
+
+    # Return the raw document text.
+    return Response(content=text, media_type=media_type)
