@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import (  # type: ignore[import-not-found]
     APIRouter,
     HTTPException,
@@ -14,6 +16,7 @@ from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 from ..utils import (
     create_jinja_context,
     document_files,
+    get_translator,
     load_document_file,
     strip_full_text,
     templates,
@@ -27,6 +30,7 @@ async def get_document(
     ver_id: str,
     request: Request,
     format: str = Query(default="json", enum=["json", "html"]),
+    lang: Literal["en", "ro"] = "en",
 ) -> Response:
     """Return a specific document by version identifier.
 
@@ -42,7 +46,11 @@ async def get_document(
     # Locate the document file matching ``ver_id``.
     file_path = next((p for p in document_files() if p.stem == ver_id), None)
     if file_path is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+        tr = get_translator(lang)
+        raise HTTPException(
+            status_code=404,
+            detail=tr("document_not_found", "Document not found"),
+        )
 
     doc = strip_full_text(load_document_file(file_path))
 
@@ -56,6 +64,7 @@ async def get_document(
                 doc=doc,
                 doc_articles={a["article_id"]: a for a in doc["articles"]},
                 title=f"{title} | leropa",
+                lang=lang,
             ),
         )
 
@@ -63,7 +72,9 @@ async def get_document(
 
 
 @router.post("/documents/{ver_id}")
-async def get_document_raw(ver_id: str) -> Response:
+async def get_document_raw(
+    ver_id: str, lang: Literal["en", "ro"] = "en"
+) -> Response:
     """Return the raw content of a document file.
 
     Args:
@@ -76,7 +87,11 @@ async def get_document_raw(ver_id: str) -> Response:
     # Locate the document file matching ``ver_id``.
     file_path = next((p for p in document_files() if p.stem == ver_id), None)
     if file_path is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+        tr = get_translator(lang)
+        raise HTTPException(
+            status_code=404,
+            detail=tr("document_not_found", "Document not found"),
+        )
 
     # Read the file contents as text.
     text = file_path.read_text(encoding="utf-8")

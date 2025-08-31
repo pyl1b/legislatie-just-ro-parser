@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Literal
 
 import yaml  # type: ignore[import-untyped]
 from fastapi.templating import Jinja2Templates  # type: ignore
@@ -25,6 +25,48 @@ TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
 # Jinja2 template renderer shared by route handlers.
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR))
+
+
+# Simple translation catalog for UI strings.
+TRANSLATIONS: dict[str, dict[str, str]] = {
+    "ro": {
+        "rag_demo_title": "Demo RAG LeRoPa",
+        "documents_link": "Documente",
+        "ask_question_title": "Pune o întrebare",
+        "your_question": "Întrebarea ta",
+        "question_aria": "Întrebare",
+        "ask_button": "Întreabă",
+        "search_documents_title": "Caută documente",
+        "search_query": "Căutare",
+        "search_button": "Caută",
+        "waiting_reply": "Se așteaptă răspuns...",
+        "please_enter_question": "Te rog introdu o întrebare",
+        "documents_title": "Documente",
+        "administration_title": "Administrare",
+        "document_id_placeholder": "ID document",
+        "add_button": "Adaugă",
+        "remove_selected": "Șterge selectate",
+        "recreate_collection": "Recreează colecția",
+        "processing": "Se procesează...",
+        "collection_recreated": "Colecția a fost recreată",
+        "source": "Sursa:",
+        "document_not_found": "Document inexistent",
+        "site_title": "LeRoPa",
+    }
+}
+
+
+def get_translator(lang: str) -> Callable[[str, str], str]:
+    """Return a translation function for ``lang``."""
+
+    catalog = TRANSLATIONS.get(lang, {})
+
+    def tr(code: str, default: str) -> str:
+        """Translate ``code`` falling back to ``default``."""
+
+        return catalog.get(code, default)
+
+    return tr
 
 
 def get_documents_dir() -> Path:
@@ -94,10 +136,13 @@ def strip_full_text(doc: JSONDict) -> JSONDict:
     return doc
 
 
-def create_jinja_context(**kwargs: object) -> dict[str, object]:
+def create_jinja_context(
+    lang: Literal["en", "ro"] = "en", **kwargs: object
+) -> dict[str, object]:
     """Create additional variables for the Jinja2 template renderer.
 
     Args:
+        lang: Language code used for translations.
         kwargs: Extra key-value pairs to inject into the template context.
 
     Returns:
@@ -105,5 +150,7 @@ def create_jinja_context(**kwargs: object) -> dict[str, object]:
     """
     return {
         "is_str": lambda x: isinstance(x, str),
+        "tr": get_translator(lang),
+        "lang": lang,
         **kwargs,
     }

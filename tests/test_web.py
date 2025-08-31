@@ -57,6 +57,7 @@ def test_chat_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
             top_k: int = 24,
             final_k: int = 8,
             use_reranker: bool = True,
+            language: str = "en",
         ) -> JSONDict:
             return {
                 "text": f"Echo: {question}",
@@ -97,7 +98,7 @@ def test_root_page_links_documents() -> None:
     client = _client()
     response = client.get("/")
     assert response.status_code == 200
-    assert '<a href="/documents?format=html"' in response.text
+    assert '<a href="/documents?format=html&lang=en"' in response.text
 
 
 def test_root_page_has_citations_list() -> None:
@@ -460,6 +461,7 @@ def test_rag_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
             top_k: int,
             final_k: int,
             use_reranker: bool,
+            language: str = "en",
         ) -> dict[str, object]:
             return {"text": "ans", "contexts": [], "documents": {}}
 
