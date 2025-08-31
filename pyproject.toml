@@ -50,6 +50,8 @@ llm = [
   "qdrant-client>=1.15.1,<2",
   "sentence-transformers>=2.2.2,<6",
   "tqdm>=4.67.1",
+  "bitsandbytes>=0.47.0",
+  "peft>=0.17.1",
 ]
 fastapi = [
   "fastapi>=0.111,<1",
@@ -80,7 +82,7 @@ extend-exclude = ["venv", ".venv"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "ANN"]  # E=pycodestyle, F=pyflakes, I=imports
-ignore = []
+ignore = ["ANN102"]
 
 [tool.ruff.format]
 quote-style = "double"

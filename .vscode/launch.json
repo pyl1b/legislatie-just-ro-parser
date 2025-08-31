@@ -242,6 +242,41 @@
       "console": "integratedTerminal",
       "justMyCode": false,
       "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "LEROPA: fine-tune",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "fine-tune",
+        "--local-corpus",
+        "${workspaceFolder}/playground/current-md",
+        "--output-dir",
+        "${workspaceFolder}/playground/llama32_memorizer_out",
+        "--epochs",
+        "3",
+        
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "LEROPA: export-md",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "leropa",
+      "args": [
+        "export-md",
+        "${workspaceFolder}/playground/current",
+        "${workspaceFolder}/playground/current-md"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/.env"
     }
   ],
   "inputs": [

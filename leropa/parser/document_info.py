@@ -91,8 +91,8 @@ class DocumentInfo:
     issuer: List[str] | None = None
     published: List[str] | None = None
 
-    def __attrs_post_init__(self: "DocumentInfo") -> None:
-        """Post-initialization hook."""
+    def postprocess_data(self: "DocumentInfo") -> None:
+        """Post-initialization when reading from raw data."""
         if self.description == self.title:
             self.description = None
         elif self.description:
@@ -154,10 +154,8 @@ class DocumentInfo:
                 suffix = " ".join([p.title() for p in title_parts])
                 self.title = f"{prefix} {suffix}"
                 if self.date:
-                    day = str(self.date[0]).zfill(2)
-                    month = str(self.date[1]).zfill(2)
-                    year = self.date[2]
-                    self.title += f" din {day}.{month}.{year}"
+                    day, month, year = self.date
+                    self.title += f" din {day:02d}.{month:02d}.{year}"
 
         if self.kind is None:
             self.kind = kind_candidate

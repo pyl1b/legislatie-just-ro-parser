@@ -176,6 +176,107 @@ def list_models() -> None:
         click.echo(name)
 
 
+@cli.command("fine-tune")
+@click.option("--corpus-url", default="", help="HTTP(S) URL to a .txt corpus.")
+@click.option(
+    "--local-corpus",
+    default="",
+    help="Local file or directory containing .txt files.",
+)
+@click.option(
+    "--output-dir",
+    default="llama32_memorizer_out",
+    show_default=True,
+    help="Output directory for artifacts.",
+)
+@click.option("--epochs", type=int, default=1, show_default=True)
+@click.option(
+    "--use-qlora",
+    is_flag=True,
+    default=False,
+    help="Force enable QLoRA (requires GPU + bitsandbytes).",
+)
+@click.option(
+    "--no-qlora",
+    is_flag=True,
+    default=False,
+    help="Force disable QLoRA.",
+)
+@click.option(
+    "--gguf-outtype",
+    default="q8_0",
+    show_default=True,
+    help="GGUF outtype (e.g., f16, q8_0).",
+)
+@click.option(
+    "--ollama-name",
+    default="llama32-leropa",
+    show_default=True,
+    help="Name for the Ollama model.",
+)
+@click.option(
+    "--ollama-ctx",
+    type=int,
+    default=0,
+    show_default=True,
+    help="PARAMETER num_ctx embedded in the Modelfile (0 omits).",
+)
+@click.option(
+    "--system-prompt",
+    default="",
+    help="Optional system prompt embedded in the Modelfile.",
+)
+@click.option(
+    "--cap-chars",
+    type=int,
+    default=0,
+    show_default=True,
+    help="Cap characters read from the corpus (0 = all).",
+)
+def fine_tune(
+    corpus_url: str,
+    local_corpus: str,
+    output_dir: str,
+    epochs: int,
+    use_qlora: bool,
+    no_qlora: bool,
+    gguf_outtype: str,
+    ollama_name: str,
+    ollama_ctx: int,
+    system_prompt: str,
+    cap_chars: int,
+) -> None:
+    """Fine-tune a base model and create an Ollama model.
+
+    This command requires optional LLM dependencies. If they are missing,
+    you'll be prompted to install them.
+    """
+
+    # Import lazily to avoid mandatory dependencies for the base package.
+    mod = _import_llm_module("fine_tune")
+
+    # Resolve tri-state QLoRA flag.
+    qlora_value = None
+    if use_qlora:
+        qlora_value = True
+    elif no_qlora:
+        qlora_value = False
+
+    # Execute the pipeline.
+    mod.run_pipeline(
+        corpus_url=corpus_url,
+        local_corpus=local_corpus,
+        output_dir=output_dir,
+        epochs=epochs,
+        use_qlora=qlora_value,
+        gguf_outtype=gguf_outtype,
+        ollama_name=ollama_name,
+        ollama_ctx=ollama_ctx,
+        system_prompt=system_prompt,
+        cap_chars=cap_chars,
+    )
+
+
 @cli.command("web")
 @click.option(
     "--host",
@@ -244,7 +345,7 @@ def start_web(host: str, port: int, reload: bool) -> None:
 )
 @click.option(
     "--title-template",
-    default="Article {label} (ID: {article_id})",
+    default=("Sursa: {document} | Articolul {label} (ID: {article_id})"),
     show_default=True,
     help="Title format used in the Markdown output.",
 )
@@ -254,21 +355,14 @@ def start_web(host: str, port: int, reload: bool) -> None:
     show_default=True,
     help="Heading shown before the article text.",
 )
-@click.option(
-    "--model",
-    default="export_legal_articles_to_md",
-    show_default=True,
-    help="Exporter module to use.",
-)
 def export_md(
     input_dir: str,
     output_dir: str,
     max_tokens: int = 1000,
     overlap: int = 200,
     ext: str = ".md",
-    title_template: str = "Article {label} (ID: {article_id})",
+    title_template: str = "",
     body_heading: str = "TEXT",
-    model: str = "export_legal_articles_to_md",
 ) -> None:
     """Export legal JSON articles to chunked Markdown files.
 
@@ -278,7 +372,7 @@ def export_md(
     """
 
     # Import the exporter module, aborting if dependencies are missing.
-    mod = _import_llm_module(model)
+    mod = _import_llm_module("export_legal_articles_to_md")
 
     # Execute the export operation and report the results to the user.
     art_count, file_count = mod.export_folder(

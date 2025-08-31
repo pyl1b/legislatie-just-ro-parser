@@ -325,6 +325,7 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
         issuer=issuer,
         published=published,
     )
+    document.postprocess_data()
 
     return {
         "document": asdict(document),

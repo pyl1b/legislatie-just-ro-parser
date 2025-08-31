@@ -6,11 +6,13 @@ import hashlib
 import os
 import re
 import uuid
-from typing import Any, Dict, List, Tuple
+from typing import List, Tuple
 
 import yaml
 
 from leropa.json_utils import json_loads
+from leropa.parser.document_info import DocumentInfo
+from leropa.parser.full import FullDocumentVersion
 
 # Optional token-aware chunking.
 try:
@@ -61,7 +63,7 @@ def sha1_text(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
 
 
-def read_any_json(path: str) -> List[Dict[str, Any]]:
+def read_any_file(path: str) -> "FullDocumentVersion":
     """Read a JSON or JSONL file and return a list of records.
 
     Args:
@@ -71,28 +73,41 @@ def read_any_json(path: str) -> List[Dict[str, Any]]:
         List of record dictionaries.
     """
 
-    out: List[Dict[str, Any]] = []
-
     # Handle newline-delimited JSON by loading line by line.
     if path.lower().endswith(".jsonl"):
+        articles = []
         with open(path, "rb") as f:
             for ln in f:
                 ln = ln.strip()
                 if ln:
                     obj = json_loads(ln)
                     assert isinstance(obj, dict)
-                    out.append(obj)
-        return out
+                    articles.append(obj)
 
-    with open(path, "rb") as f:
-        data = json_loads(f.read())
+        return FullDocumentVersion(
+            articles=articles,
+            document=DocumentInfo(
+                title="",
+                description="",
+                source=path,
+                ver_id=os.path.basename(path).replace(".jsonl", ""),
+            ),
+        )
 
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict):
-        return [data]
+    if path.lower().endswith(".yaml"):
+        with open(path, "rb") as f:
+            data = yaml.safe_load(f)
+    else:
+        with open(path, "rb") as f:
+            data = json_loads(f.read())
 
-    raise ValueError(f"Unsupported JSON structure in {path}")
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"Unsupported JSON/YAML structure in {path}; top level object is"
+            f" {type(data)} (expected dict)"
+        )
+
+    return FullDocumentVersion.from_raw_data(data)
 
 
 def token_len(text: str) -> int:
@@ -163,33 +178,6 @@ def ensure_dir(p: str) -> None:
     os.makedirs(p, exist_ok=True)
 
 
-def normalize_record(rec: Dict[str, Any], source_file: str) -> Dict[str, Any]:
-    """Validate and normalize a record.
-
-    Args:
-        rec: Raw record mapping.
-        source_file: Name of the source file for attribution.
-
-    Returns:
-        Normalized record mapping.
-    """
-
-    missing = [k for k in ("full_text", "article_id", "label") if k not in rec]
-    if missing:
-        raise ValueError(f"Missing keys {missing}")
-
-    text = (rec.get("full_text") or "").strip()
-    if not text:
-        raise ValueError("Empty full_text")
-
-    return {
-        "full_text": text,
-        "article_id": str(rec.get("article_id")),
-        "label": str(rec.get("label")),
-        "source_file": source_file,
-    }
-
-
 # ---------- Export ----------
 
 
@@ -198,7 +186,7 @@ def export_folder(
     output_dir: str,
     max_tokens: int = 1000,
     overlap_tokens: int = 200,
-    title_template: str = "Article {label} (ID: {article_id})",
+    title_template: str = "",
     body_heading: str = "TEXT",
     ext: str = ".md",
 ) -> Tuple[int, int]:
@@ -219,29 +207,27 @@ def export_folder(
 
     ensure_dir(output_dir)
 
-    files = glob.glob(
-        os.path.join(input_dir, "**", "*.json"), recursive=True
-    ) + glob.glob(os.path.join(input_dir, "**", "*.jsonl"), recursive=True)
+    files = (
+        glob.glob(os.path.join(input_dir, "**", "*.json"), recursive=True)
+        + glob.glob(os.path.join(input_dir, "**", "*.jsonl"), recursive=True)
+        + glob.glob(os.path.join(input_dir, "**", "*.yaml"), recursive=True)
+    )
 
     num_articles = 0
     num_files = 0
 
     for f in files:
         try:
-            for raw in read_any_json(f):
-                try:
-                    rec = normalize_record(raw, os.path.basename(f))
-                except Exception as e:
-                    print(f"[skip] {f}: {e}")
-                    continue
-
-                text = rec["full_text"]
-                article_id = rec["article_id"]
-                label = rec["label"]
+            doc = read_any_file(f)
+            doc_title = doc.document.title or str(id(doc))
+            for article in doc.articles:
                 title = title_template.format(
-                    label=label, article_id=article_id
+                    label=article.label,
+                    article_id=article.article_id,
+                    document=doc.document.title or "",
                 )
 
+                text = article.full_text
                 parts = token_chunks(
                     text, max_tokens=max_tokens, overlap_tokens=overlap_tokens
                 )
@@ -249,21 +235,25 @@ def export_folder(
                 total = len(parts)
                 num_articles += 1
 
-                base = f"{slug(label)}__{slug(article_id)}"
+                base = "__".join(
+                    slug(a)
+                    for a in (doc_title, article.label, article.article_id)
+                )
                 for idx, chunk in enumerate(parts):
                     chunk_idx = idx
 
                     meta = {
                         "title": title,
-                        "article_id": article_id,
-                        "label": label,
-                        "source_file": rec["source_file"],
+                        "article_id": article.article_id,
+                        "label": article.label,
+                        "source_file": os.path.basename(f),
+                        "source_url": doc.document.source,
                         "chunk_index": chunk_idx,
                         "total_chunks": total,
                         "tokens": token_len(chunk),
                         "hash": sha1_text(chunk),
                         "created_at": now_iso(),
-                        "exporter": "export_legal_articles_to_md.py",
+                        "exporter": "leropa.llm.export_legal_articles_to_md",
                         "exporter_version": "1.0",
                     }
 
@@ -277,15 +267,7 @@ def export_folder(
                     yaml_front_matter = f"---\n{yaml_data}---\n"
 
                     # Body as Markdown with a clear heading.
-                    body = (
-                        f"# {title}\n"
-                        "\n"
-                        f"**Source:** {rec['source_file']}\n"
-                        "\n"
-                        f"## {body_heading}\n"
-                        "\n"
-                        f"{chunk}\n"
-                    )
+                    body = f"# {title}\n\n## {body_heading}\n\n{chunk}\n"
 
                     content = yaml_front_matter + "\n" + body
 
