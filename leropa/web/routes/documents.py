@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Literal
 
 import yaml  # type: ignore[import-untyped]
 from fastapi import (  # type: ignore[import-not-found]
@@ -26,6 +27,7 @@ from ..utils import (
     create_jinja_context,
     document_files,
     get_documents_dir,
+    get_translator,
     load_document_file,
     templates,
 )
@@ -61,6 +63,7 @@ def _load_summaries() -> DocumentSummaryList:
 async def list_documents(
     request: Request,
     format: str = Query(default="json", enum=["json", "html"]),
+    lang: Literal["en", "ro"] = "en",
 ) -> Response:
     """List structured documents available on the server.
 
@@ -77,12 +80,14 @@ async def list_documents(
 
     # Render as HTML when requested.
     if format == "html":
+        tr = get_translator(lang)
         return templates.TemplateResponse(
             "documents.html",
             context=create_jinja_context(
                 request=request,
                 documents=summaries,
-                title="Documents | leropa",
+                title=f"{tr('documents_title', 'Documents')} | leropa",
+                lang=lang,
             ),
         )
 
@@ -102,7 +107,9 @@ async def list_documents_raw() -> JSONResponse:
 
 
 @router.get("/admin")
-async def documents_admin(request: Request) -> Response:
+async def documents_admin(
+    request: Request, lang: Literal["en", "ro"] = "en"
+) -> Response:
     """Render admin page for adding and deleting documents.
 
     Args:
@@ -113,12 +120,14 @@ async def documents_admin(request: Request) -> Response:
     """
 
     summaries = _load_summaries()
+    tr = get_translator(lang)
     return templates.TemplateResponse(
         "documents_admin.html",
         context=create_jinja_context(
             request=request,
             documents=summaries,
-            title="Documents Admin | leropa",
+            title=f"{tr('administration_title', 'Administration')} | leropa",
+            lang=lang,
         ),
     )
 

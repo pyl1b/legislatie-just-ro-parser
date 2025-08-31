@@ -130,8 +130,6 @@ RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "BAAI/bge-reranker-base")
 TOP_K_RETRIEVE = int(os.environ.get("TOP_K_RETRIEVE", "64"))
 TOP_K_CONTEXT = int(os.environ.get("TOP_K_CONTEXT", "16"))
 
-LANGUAGE: Literal["ro", "en"] = os.environ.get("DLG_LNG", "ro")  # type: ignore
-assert LANGUAGE in ["ro", "en"]
 
 # Tokenizer for chunking
 try:
@@ -570,6 +568,7 @@ def ask_with_context(
     top_k: int = TOP_K_RETRIEVE,
     final_k: int = TOP_K_CONTEXT,
     use_reranker: bool = True,
+    language: Literal["en", "ro"] = "ro",
 ) -> Dict[str, Any]:
     """Retrieve → (optional rerank) → generate answer with citations.
 
@@ -609,7 +608,7 @@ def ask_with_context(
         ctx_blocks.append(f"[{i}] Source: {src}\n{c['text']}")
     context = "\n\n".join(ctx_blocks)
 
-    if LANGUAGE == "en":
+    if language == "en":
         system = (
             "You are a precise legal research assistant. "
             "Use ONLY the supplied CONTEXT to answer the user's question. "
@@ -621,7 +620,7 @@ def ask_with_context(
             f"QUESTION:\n{question}\n\nCONTEXT:\n{context}\n\n"
             "Answer with citations like [1], [2]."
         )
-    elif LANGUAGE == "ro":
+    elif language == "ro":
         system = (
             "Esti un asistent legal exact care utilizează doar CONTEXTUL "
             "furnizat pentru a răspunde la întrebarea utilizatorului. "
@@ -634,7 +633,7 @@ def ask_with_context(
             "Răspunde cu citările ca [1], [2]."
         )
     else:
-        raise ValueError(f"Invalid language: {LANGUAGE}")
+        raise ValueError(f"Invalid language: {language}")
 
     answer_text = _ollama_chat(system, user, stream=False)
 

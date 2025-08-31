@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter  # type: ignore[import-not-found]
 from fastapi.responses import JSONResponse  # type: ignore[import-not-found]
 from pydantic import BaseModel  # type: ignore[import-not-found]
@@ -29,6 +31,7 @@ class AskRequest(BaseModel):
     finalk: int = 8
     no_rerank: bool = False
     model: str | None = None
+    lang: Literal["en", "ro"] = "en"
 
 
 # Load the RAG module once; used for answering questions.
@@ -43,6 +46,7 @@ async def rag_ask_get(
     finalk: int = 8,
     no_rerank: bool = False,
     model: str | None = None,
+    lang: Literal["en", "ro"] = "en",
 ) -> JSONResponse:
     """Ask a question via query parameters and receive an answer.
 
@@ -67,6 +71,7 @@ async def rag_ask_get(
         top_k=topk,
         final_k=finalk,
         use_reranker=not no_rerank,
+        language=lang,
     )
     return JSONResponse(answer)
 
@@ -91,5 +96,6 @@ async def rag_ask_post(payload: AskRequest) -> JSONResponse:
         top_k=payload.topk,
         final_k=payload.finalk,
         use_reranker=not payload.no_rerank,
+        language=payload.lang,
     )
     return JSONResponse(answer)

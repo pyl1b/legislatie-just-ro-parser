@@ -1,17 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>LeRoPa RAG Demo</h1>
+
+<h1>{{ tr('rag_demo_title', 'LeRoPa RAG Demo') }}</h1>
 <nav class="nav mb-3">
-  <a class="nav-link" href="/documents?format=html">Documents</a>
-  <a class="nav-link" href="/admin">Admin</a>
+  <a class="nav-link" href="/documents?format=html">{{ tr('documents_link', 'Documents') }}</a>
+  <a class="nav-link" href="/admin">{{ tr('admin_link', 'Admin') }}</a>
 </nav>
 
 <div class="mb-4">
-  <h2>Ask a question</h2>
+  <h2>{{ tr('ask_question_title', 'Ask a question') }}</h2>
   <form id="ask-form" class="input-group">
     <select id="model" name="model" class="form-select"></select>
-    <input type="text" id="question" name="question" class="form-control" placeholder="Your question" aria-label="Question" />
-    <button class="btn btn-primary" type="submit">Ask</button>
+    <input type="text" id="question" name="question" class="form-control" placeholder="{{ tr('your_question', 'Your question') }}" aria-label="{{ tr('question_aria', 'Question') }}" />
+    <button class="btn btn-primary" type="submit">{{ tr('ask_button', 'Ask') }}</button>
   </form>
   <!-- textarea id="answer" class="form-control mt-3" rows="4" readonly></textarea -->
   <div id="answer" class="form-control mt-3" ></div>
@@ -19,10 +20,10 @@
 </div>
 
 <div class="mb-4">
-  <h2>Search documents</h2>
+  <h2>{{ tr('search_documents_title', 'Search documents') }}</h2>
   <form id="search-form" class="input-group">
-    <input type="text" id="query" name="query" class="form-control" placeholder="Search query" aria-label="Search query" />
-    <button class="btn btn-secondary" type="submit">Search</button>
+    <input type="text" id="query" name="query" class="form-control" placeholder="{{ tr('search_query', 'Search query') }}" aria-label="{{ tr('search_query', 'Search query') }}" />
+    <button class="btn btn-secondary" type="submit">{{ tr('search_button', 'Search') }}</button>
   </form>
   <ul id="hits" class="list-group mt-3"></ul>
 </div>
@@ -31,7 +32,7 @@
   <div class="progress">
     <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
   </div>
-  <div class="text-muted mt-1">Waiting for reply...</div>
+  <div class="text-muted mt-1">{{ tr('waiting_reply', 'Waiting for reply...') }}</div>
   
 </div>
 
@@ -72,7 +73,7 @@ askForm.addEventListener('submit', async (e) => {
   const question = document.getElementById('question').value;
   const model = document.getElementById('model').value;
   if (question.trim() === '') {
-    showToast('Please enter a question');
+    showToast('{{ tr('please_enter_question', 'Please enter a question') }}');
     return;
   }
 
@@ -80,7 +81,7 @@ askForm.addEventListener('submit', async (e) => {
     showProgress(true);
 
     // Perform a POST request to the ask endpoint.
-    const resp = await fetch('/rag/ask', {
+    const resp = await fetch('/rag/ask?lang={{ lang }}', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({question, model}),
@@ -106,7 +107,7 @@ askForm.addEventListener('submit', async (e) => {
       const src = ctx.source_file || '';
       const verId = ctx.file_id;
       const src_doc = data.documents[verId];
-      const url = `/documents/${verId}?format=html#${ctx.article_id}`;
+      const url = `/documents/${verId}?format=html&lang={{ lang }}#${ctx.article_id}`;
       const li = document.createElement('li');
       li.className = 'list-group-item';
       const a = document.createElement('a');
@@ -127,7 +128,7 @@ askForm.addEventListener('submit', async (e) => {
         return match;
       }
       const src_doc = data.documents[ctx.file_id];
-      const url = `/documents/${ctx.file_id}?format=html#${ctx.article_id}`;
+      const url = `/documents/${ctx.file_id}?format=html&lang={{ lang }}#${ctx.article_id}`;
       const title = `${src_doc.title || ''} - Art. ${ctx.label}`;
       return `<a href="${url}" title="${title}" target="_blank">${match}</a>`;
     });

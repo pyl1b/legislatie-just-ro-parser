@@ -32,3 +32,5 @@
 - Cache document metadata for 15 minutes and return it with RAG answers.
 - Reuse document metadata cache for document listings.
 - Provide separate admin page for adding and deleting documents.
+- Add simple translation support for web pages with ``lang`` parameter and ``tr`` helper.
+- Convert ``rag_legal_qdrant`` language setting into a function parameter.

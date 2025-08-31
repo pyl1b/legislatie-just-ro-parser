@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, Request  # type: ignore[import-not-found]
 from fastapi.responses import HTMLResponse  # type: ignore[import-not-found]
 
@@ -11,7 +13,9 @@ router = APIRouter()
 
 
 @router.get("/")
-async def root_page(request: Request) -> HTMLResponse:
+async def root_page(
+    request: Request, lang: Literal["en", "ro"] = "en"
+) -> HTMLResponse:
     """Render the main page with chat and search forms.
 
     Args:
@@ -23,5 +27,5 @@ async def root_page(request: Request) -> HTMLResponse:
 
     # Render the Jinja2 template for the main page.
     return templates.TemplateResponse(
-        "index.html", context=create_jinja_context(request=request)
+        "index.html", context=create_jinja_context(request=request, lang=lang)
     )
