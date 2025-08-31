@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>LeRoPa RAG Demo</h1>
-<p><a href="/documents?format=html">Documents</a></p>
+<nav class="nav mb-3">
+  <a class="nav-link" href="/documents?format=html">Documents</a>
+  <a class="nav-link" href="/admin">Admin</a>
+</nav>
 
 <div class="mb-4">
   <h2>Ask a question</h2>

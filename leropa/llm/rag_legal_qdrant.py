@@ -581,14 +581,14 @@ def ask_with_context(
     items = search(question, collection=collection, top_k=top_k)
 
     # 2) Optional rerank to choose best 'final_k'
-    # if use_reranker and _HAS_RERANKER and len(items) > final_k:
-    #     assert CrossEncoder is not None
-    #     reranker = CrossEncoder(RERANKER_MODEL, device="cpu")
-    #     pairs = [(question, it["text"]) for it in items]
-    #     scores = reranker.predict(pairs).tolist()
-    #     for it, s in zip(items, scores):
-    #         it["rerank"] = float(s)
-    #     items.sort(key=lambda x: x["rerank"], reverse=True)
+    if use_reranker and _HAS_RERANKER and len(items) > final_k:
+        assert CrossEncoder is not None
+        reranker = CrossEncoder(RERANKER_MODEL, device="cpu")
+        pairs = [(question, it["text"]) for it in items]
+        scores = reranker.predict(pairs).tolist()
+        for it, s in zip(items, scores):
+            it["rerank"] = float(s)
+        items.sort(key=lambda x: x["rerank"], reverse=True)
     contexts = items[:final_k]
 
     # 3) Build context blocks and prompt
