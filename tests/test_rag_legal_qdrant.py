@@ -44,8 +44,8 @@ def test_read_json_file_handles_json_and_jsonl(tmp_path: Path) -> None:
             ]
         )
     )
-    objs_json = rag._read_json_file(str(json_file))
-    objs_jsonl = rag._read_json_file(str(jsonl_file))
+    _, objs_json = rag._read_json_file(str(json_file))
+    _, objs_jsonl = rag._read_json_file(str(jsonl_file))
     assert objs_json[0]["article_id"] == 1
     assert len(objs_jsonl) == 2
     assert objs_jsonl[1]["label"] == "C"
@@ -88,7 +88,7 @@ def test_read_json_file_extracts_articles_from_parser_output(
     json_file = tmp_path / "doc.json"
     json_file.write_text(json.dumps(doc))
 
-    objs = rag._read_json_file(str(json_file))
+    _, objs = rag._read_json_file(str(json_file))
 
     assert objs[0]["label"] == "A"
 

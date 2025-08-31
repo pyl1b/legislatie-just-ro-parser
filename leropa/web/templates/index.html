@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
+
 <h1>{{ tr('rag_demo_title', 'LeRoPa RAG Demo') }}</h1>
-<p><a href="/documents?format=html&lang={{ lang }}">{{ tr('documents_link', 'Documents') }}</a></p>
+<nav class="nav mb-3">
+  <a class="nav-link" href="/documents?format=html">{{ tr('documents_link', 'Documents') }}</a>
+  <a class="nav-link" href="/admin">{{ tr('admin_link', 'Admin') }}</a>
+</nav>
 
 <div class="mb-4">
   <h2>{{ tr('ask_question_title', 'Ask a question') }}</h2>

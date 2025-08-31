@@ -106,7 +106,7 @@ async def list_documents_raw() -> JSONResponse:
     return JSONResponse(_load_summaries())
 
 
-@router.get("/documents-admin")
+@router.get("/admin")
 async def documents_admin(
     request: Request, lang: Literal["en", "ro"] = "en"
 ) -> Response:

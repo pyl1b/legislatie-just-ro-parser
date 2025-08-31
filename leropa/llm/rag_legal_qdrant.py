@@ -74,7 +74,7 @@ import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
+from typing import Any, Dict, Generator, List, Literal, Optional, Tuple, cast
 
 import requests
 import yaml  # type: ignore[import]
@@ -213,14 +213,14 @@ def _extract_articles(data: object) -> List[Dict[str, Any]]:
     raise ValueError("Unsupported document structure")
 
 
-def _read_json_file(path: str) -> List[Dict[str, Any]]:
+def _read_json_file(path: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Load a JSON/JSONL file into a list of article objects.
 
     Args:
         path: Path to the JSON or JSONL file.
 
     Returns:
-        List of article objects.
+        Tuple of document object and list of article objects.
     """
 
     if _is_jsonl(path):
@@ -232,33 +232,33 @@ def _read_json_file(path: str) -> List[Dict[str, Any]]:
                     continue
                 obj = json_loads(line)
                 out.append(obj)
-        return out
+        return {"articles": out}, out
 
     with open(path, "rb") as f:
         data = json_loads(f.read())
 
-    return _extract_articles(data)
+    return cast(Dict[str, Any], data), _extract_articles(data)
 
 
-def _read_yaml_file(path: str) -> List[Dict[str, Any]]:
+def _read_yaml_file(path: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     """Load a YAML file into a list of article objects.
 
     Args:
         path: Path to the YAML file.
 
     Returns:
-        List of article objects.
+        Tuple of document object and list of article objects.
     """
 
     with open(path, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
 
-    return _extract_articles(data)
+    return cast(Dict[str, Any], data), _extract_articles(data)
 
 
 def _iter_json_objects(
     root: str | Path,
-) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
+) -> Generator[Tuple[str, Dict[str, Any], Dict[str, Any]], None, None]:
     """Yield (source_file, article) pairs from ``root`` directory.
 
     Handles JSON, JSONL or YAML files containing article records or parser
@@ -277,13 +277,13 @@ def _iter_json_objects(
             path = os.path.join(dirpath, fn)
             try:
                 if lower.endswith((".json", ".jsonl")):
-                    objs = _read_json_file(path)
+                    raw_data, objs = _read_json_file(path)
                 elif lower.endswith((".yaml", ".yml")):
-                    objs = _read_yaml_file(path)
+                    raw_data, objs = _read_yaml_file(path)
                 else:
                     continue
                 for obj in objs:
-                    yield path, obj
+                    yield path, raw_data, obj
             except Exception as e:
                 logger.exception(f"Skipping {path}: {e}")
 
@@ -465,14 +465,22 @@ def ingest_folder(
 
     total = 0
     # tqdm shows a progress bar.
-    for source, obj in tqdm(
+    for source, raw_data, obj in tqdm(
         list(_iter_json_objects(root)), desc="Scanning", ncols=80
     ):
+        document = raw_data.get("document", {})
         rec = _validate_article(obj, source)
         if not rec:
             continue
 
-        text = rec["full_text"]
+        text = (
+            "Articolul "
+            + rec["label"]
+            + ", "
+            + document.get("title", "")
+            + ": "
+            + rec["full_text"]
+        )
         chunks = _split_into_token_chunks(text, chunk_tokens, overlap_tokens)
 
         for idx, chunk in enumerate(chunks):
@@ -580,14 +588,14 @@ def ask_with_context(
     items = search(question, collection=collection, top_k=top_k)
 
     # 2) Optional rerank to choose best 'final_k'
-    # if use_reranker and _HAS_RERANKER and len(items) > final_k:
-    #     assert CrossEncoder is not None
-    #     reranker = CrossEncoder(RERANKER_MODEL, device="cpu")
-    #     pairs = [(question, it["text"]) for it in items]
-    #     scores = reranker.predict(pairs).tolist()
-    #     for it, s in zip(items, scores):
-    #         it["rerank"] = float(s)
-    #     items.sort(key=lambda x: x["rerank"], reverse=True)
+    if use_reranker and _HAS_RERANKER and len(items) > final_k:
+        assert CrossEncoder is not None
+        reranker = CrossEncoder(RERANKER_MODEL, device="cpu")
+        pairs = [(question, it["text"]) for it in items]
+        scores = reranker.predict(pairs).tolist()
+        for it, s in zip(items, scores):
+            it["rerank"] = float(s)
+        items.sort(key=lambda x: x["rerank"], reverse=True)
     contexts = items[:final_k]
 
     # 3) Build context blocks and prompt
