@@ -1,5 +1,7 @@
 # legislatie-just-ro-parser
 
+English | [Română](README.ro.md)
+
 `leropa` reads legal documents from
 [legislatie.just.ro](https://legislatie.just.ro/) and converts them into
 structured data. It fetches documents on demand, caches the retrieved HTML and
