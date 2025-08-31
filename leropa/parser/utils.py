@@ -102,7 +102,7 @@ def _note_from_tag(tag: Any) -> Note:  # noqa: ANN401
     note_id = str(tag.get("id", ""))
     text = _normalize_whitespace(tag.get_text(" ", strip=True))
     details = _parse_note_details(text)
-    return Note(note_id=note_id, text=text, **details)
+    return Note(note_id=note_id, text=text.replace("...", ""), **details)
 
 
 def _extract_article_note(tag: Any) -> Note:  # noqa: ANN401

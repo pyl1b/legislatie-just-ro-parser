@@ -102,7 +102,35 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
     )
 
     description = description_tag.get("content") if description_tag else None
+    if description == title:
+        description = None
+
     keywords = keywords_tag.get("content") if keywords_tag else None
+    if keywords == title:
+        keywords = None
+
+    sub_header = [
+        _normalize_whitespace(itr_tag.get_text())
+        for itr_tag in soup.find_all("span", class_="S_HDR")
+    ]
+    if description is None and sub_header:
+        description = " ".join(sub_header)
+
+    issuer = [
+        _normalize_whitespace(itr_tag.get_text())
+        for itr_tag in soup.find_all("span", class_="S_EMT_BDY")
+    ]
+    published = [
+        _normalize_whitespace(itr_tag.get_text())
+        for itr_tag in soup.find_all("span", class_="S_PUB_BDY")
+    ]
+
+    document_note = None
+    sheet_el = soup.find("span", id="fisaact")
+    assert sheet_el is not None
+    notes_el = sheet_el.find_next_sibling(class_="S_NTA")
+    if notes_el:
+        document_note = _note_from_tag(notes_el)
 
     # Collect historical versions from the consolidation list.
     history: HistoryList = []
@@ -293,6 +321,9 @@ def parse_html(html: str, ver_id: str) -> dict[str, Any]:
         keywords=keywords,
         history=history,
         prev_ver=history[0].ver_id if history else None,
+        document_note=document_note,
+        issuer=issuer,
+        published=published,
     )
 
     return {
