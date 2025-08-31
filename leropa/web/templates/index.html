@@ -3,8 +3,17 @@
 
 <h1>{{ tr('rag_demo_title', 'LeRoPa RAG Demo') }}</h1>
 <nav class="nav mb-3">
-  <a class="nav-link" href="/documents?format=html">{{ tr('documents_link', 'Documents') }}</a>
-  <a class="nav-link" href="/admin">{{ tr('admin_link', 'Admin') }}</a>
+  <a class="nav-link" href="/documents?format=html&lang={{ lang }}">{{ tr('documents_link', 'Documents') }}</a>
+  <a class="nav-link" href="/admin?lang={{ lang }}">{{ tr('admin_link', 'Admin') }}</a>
+  <div class="nav-item dropdown ms-auto">
+    <a class="nav-link dropdown-toggle" href="#" id="langDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+      {% if lang == 'ro' %}Română{% else %}English{% endif %}
+    </a>
+    <ul class="dropdown-menu" aria-labelledby="langDropdown">
+      <li><a class="dropdown-item {% if lang == 'en' %}active{% endif %}" href="?lang=en">English</a></li>
+      <li><a class="dropdown-item {% if lang == 'ro' %}active{% endif %}" href="?lang=ro">Română</a></li>
+    </ul>
+  </div>
 </nav>
 
 <div class="mb-4">
@@ -73,7 +82,7 @@ askForm.addEventListener('submit', async (e) => {
   const question = document.getElementById('question').value;
   const model = document.getElementById('model').value;
   if (question.trim() === '') {
-    showToast('{{ tr('please_enter_question', 'Please enter a question') }}');
+    showToast("{{ tr('please_enter_question', 'Please enter a question') }}");
     return;
   }
 
