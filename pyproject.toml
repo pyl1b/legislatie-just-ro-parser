@@ -49,7 +49,7 @@ llm = [
   "tiktoken>=0.11.0",
   "qdrant-client>=1.15.1,<2",
   "sentence-transformers>=2.2.2,<6",
-  "tqdm>=4.67.1",
+  "tqdm>=4.67.3",
 ]
 fastapi = [
   "fastapi>=0.111,<1",
